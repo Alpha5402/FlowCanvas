@@ -1173,7 +1173,7 @@ onBeforeUnmount(() => {
               :value="batchElementValue('shape')"
               @change="updateSelectedElements('shape', ($event.target as HTMLSelectElement).value as FlowElement['shape'])"
             >
-              <option value=""></option>
+              <option value="" disabled></option>
               <option value="rect">Rect</option>
               <option value="rounded-rect">Rounded rect</option>
               <option value="ellipse">Ellipse</option>
@@ -1186,7 +1186,7 @@ onBeforeUnmount(() => {
               :value="batchElementValue('sizeMode')"
               @change="updateSelectedElements('sizeMode', ($event.target as HTMLSelectElement).value as FlowElement['sizeMode'])"
             >
-              <option value=""></option>
+              <option value="" disabled></option>
               <option value="fixed">Fixed</option>
               <option value="fit-content">Fit content</option>
             </select>
@@ -1247,7 +1247,7 @@ onBeforeUnmount(() => {
               :value="batchElementValue('textAlign')"
               @change="updateSelectedElements('textAlign', ($event.target as HTMLSelectElement).value as FlowElement['textAlign'])"
             >
-              <option value=""></option>
+              <option value="" disabled></option>
               <option value="left">Left</option>
               <option value="center">Center</option>
               <option value="right">Right</option>
@@ -1295,7 +1295,7 @@ onBeforeUnmount(() => {
               :value="batchConnectionValue('lineType')"
               @change="updateSelectedConnections('lineType', ($event.target as HTMLSelectElement).value as Connection['lineType'])"
             >
-              <option value=""></option>
+              <option value="" disabled></option>
               <option value="solid">Solid</option>
               <option value="dashed">Dashed</option>
             </select>
@@ -1338,7 +1338,7 @@ onBeforeUnmount(() => {
               :value="batchConnectionValue('arrow')"
               @change="updateSelectedConnections('arrow', ($event.target as HTMLSelectElement).value as Connection['arrow'])"
             >
-              <option value=""></option>
+              <option value="" disabled></option>
               <option value="none">None</option>
               <option value="start">Start</option>
               <option value="end">End</option>
@@ -1351,7 +1351,7 @@ onBeforeUnmount(() => {
               :value="batchConnectionValue('textPosition')"
               @change="updateSelectedConnections('textPosition', ($event.target as HTMLSelectElement).value as Connection['textPosition'])"
             >
-              <option value=""></option>
+              <option value="" disabled></option>
               <option value="above">Above</option>
               <option value="middle">Middle</option>
               <option value="below">Below</option>

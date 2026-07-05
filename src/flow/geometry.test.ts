@@ -10,7 +10,7 @@ import {
   resizeElementBox,
   snapElement,
 } from './geometry';
-import { deleteSelectionFromFlow, pushHistory, redo, undo, type HistoryState } from './state';
+import { deleteSelectionFromFlow, pushHistory, redo, toggleSelection, undo, type HistoryState } from './state';
 
 const baseElement: FlowElement = {
   id: 'a',
@@ -142,6 +142,23 @@ describe('geometry', () => {
     const result = deleteSelectionFromFlow(elements, connections, { type: 'element', id: 'a' });
 
     expect(result.elements).toHaveLength(1);
+    expect(result.connections).toHaveLength(0);
+  });
+
+  it('toggles multiple selected items and deletes the whole selection', () => {
+    const elements = [baseElement, { ...baseElement, id: 'b' }, { ...baseElement, id: 'c' }];
+    const connections: Connection[] = [
+      connection(),
+      { ...connection(), id: 'c2', source: { elementId: 'b', side: 'right' }, target: { elementId: 'c', side: 'left' } },
+    ];
+    const selection = toggleSelection(
+      toggleSelection({ type: 'element', id: 'a' }, { type: 'connection', id: 'c2' }),
+      { type: 'element', id: 'b' },
+    );
+    const result = deleteSelectionFromFlow(elements, connections, selection);
+
+    expect(selection?.type).toBe('multi');
+    expect(result.elements.map((element) => element.id)).toEqual(['c']);
     expect(result.connections).toHaveLength(0);
   });
 
