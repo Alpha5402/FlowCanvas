@@ -1,4 +1,13 @@
-import type { AlignmentGuide, Connection, FlowElement, Point } from '../types/flow';
+import type {
+  AlignmentGuide,
+  Anchor,
+  AnchorSide,
+  Connection,
+  ConnectionEndpoint,
+  FlowElement,
+  Point,
+  ResizeHandle,
+} from '../types/flow';
 
 export interface Measurer {
   measureText(text: string): { width: number };
@@ -12,12 +21,15 @@ export interface ElementBox {
 }
 
 export interface ConnectionPath {
-  start: Point;
-  end: Point;
-  control: Point | null;
-  isStraight: boolean;
-  textPoint: Point;
+  sourceAnchor: Anchor;
+  sourceLeadPoint: Point;
+  targetLeadPoint: Point;
+  targetAnchor: Anchor;
+  control1: Point;
+  control2: Point;
+  labelPoint: Point;
   textAngle: number;
+  samplePoints: Point[];
 }
 
 export interface SnapResult {
@@ -26,10 +38,20 @@ export interface SnapResult {
   guides: AlignmentGuide[];
 }
 
+export interface ResizeResult {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 const FONT_SIZE = 14;
 const LINE_HEIGHT = 20;
 const SNAP_DISTANCE = 6;
-const STRAIGHT_TOLERANCE = 8;
+const LEAD_DISTANCE = 32;
+export const MIN_ELEMENT_WIDTH = 48;
+export const MIN_ELEMENT_HEIGHT = 32;
+export const ANCHOR_HANDLE_OFFSET = 0;
 
 export function getElementBox(element: FlowElement, measurer?: Measurer): ElementBox {
   if (element.sizeMode === 'fit-content') {
@@ -70,53 +92,133 @@ export function getCenter(element: FlowElement, measurer?: Measurer): Point {
   };
 }
 
+export function getAnchorNormal(side: AnchorSide): Point {
+  if (side === 'top') return { x: 0, y: -1 };
+  if (side === 'right') return { x: 1, y: 0 };
+  if (side === 'bottom') return { x: 0, y: 1 };
+  return { x: -1, y: 0 };
+}
+
+export function getElementAnchors(element: FlowElement, measurer?: Measurer): Anchor[] {
+  const box = getElementBox(element, measurer);
+  const anchors: Array<[AnchorSide, Point]> = [
+    ['top', { x: box.x + box.width / 2, y: box.y }],
+    ['right', { x: box.x + box.width, y: box.y + box.height / 2 }],
+    ['bottom', { x: box.x + box.width / 2, y: box.y + box.height }],
+    ['left', { x: box.x, y: box.y + box.height / 2 }],
+  ];
+
+  return anchors.map(([side, point]) => ({
+    elementId: element.id,
+    side,
+    x: point.x,
+    y: point.y,
+    normalVector: getAnchorNormal(side),
+  }));
+}
+
+export function getAnchorHandlePoint(anchor: Anchor): Point {
+  return {
+    x: anchor.x + anchor.normalVector.x * ANCHOR_HANDLE_OFFSET,
+    y: anchor.y + anchor.normalVector.y * ANCHOR_HANDLE_OFFSET,
+  };
+}
+
+export function resolveConnectionEndpoint(
+  connection: Connection,
+  end: 'source' | 'target',
+): ConnectionEndpoint {
+  const endpoint = connection[end];
+  if (endpoint) return endpoint;
+  return {
+    elementId: end === 'source' ? connection.sourceElementId ?? '' : connection.targetElementId ?? '',
+    side: end === 'source' ? 'right' : 'left',
+  };
+}
+
+export function normalizeConnection(connection: Connection): Connection {
+  return {
+    ...connection,
+    source: resolveConnectionEndpoint(connection, 'source'),
+    target: resolveConnectionEndpoint(connection, 'target'),
+  };
+}
+
+export function findAnchor(
+  elements: FlowElement[],
+  endpoint: ConnectionEndpoint,
+  measurer?: Measurer,
+): Anchor | null {
+  const element = elements.find((item) => item.id === endpoint.elementId);
+  if (!element) return null;
+  return getElementAnchors(element, measurer).find((anchor) => anchor.side === endpoint.side) ?? null;
+}
+
 export function getConnectionPath(
   connection: Connection,
   elements: FlowElement[],
   measurer?: Measurer,
 ): ConnectionPath | null {
-  const source = elements.find((element) => element.id === connection.sourceElementId);
-  const target = elements.find((element) => element.id === connection.targetElementId);
-  if (!source || !target) return null;
+  const normalized = normalizeConnection(connection);
+  const sourceAnchor = findAnchor(elements, normalized.source, measurer);
+  const targetAnchor = findAnchor(elements, normalized.target, measurer);
+  if (!sourceAnchor || !targetAnchor) return null;
+  return createConnectionPath(sourceAnchor, targetAnchor);
+}
 
-  const start = getCenter(source, measurer);
-  const end = getCenter(target, measurer);
-  const dx = end.x - start.x;
-  const dy = end.y - start.y;
-  const isStraight = Math.abs(dx) < STRAIGHT_TOLERANCE || Math.abs(dy) < STRAIGHT_TOLERANCE;
-  const control = isStraight
-    ? null
-    : {
-        x: (start.x + end.x) / 2,
-        y: (start.y + end.y) / 2 - Math.min(90, Math.max(36, Math.abs(dx) * 0.18)),
-      };
-  const textPoint = control
-    ? quadraticPoint(start, control, end, 0.5)
-    : { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 };
-  const tangent = control
-    ? quadraticTangent(start, control, end, 0.5)
-    : { x: dx, y: dy };
+export function createConnectionPath(sourceAnchor: Anchor, targetAnchor: Anchor): ConnectionPath {
+  const sourceLeadPoint = add(sourceAnchor, multiply(sourceAnchor.normalVector, LEAD_DISTANCE));
+  const targetLeadPoint = add(targetAnchor, multiply(targetAnchor.normalVector, LEAD_DISTANCE));
+  const distance = Math.hypot(targetLeadPoint.x - sourceLeadPoint.x, targetLeadPoint.y - sourceLeadPoint.y);
+  const controlDistance = Math.max(40, Math.min(180, distance * 0.38));
+  const control1 = add(sourceLeadPoint, multiply(sourceAnchor.normalVector, controlDistance));
+  const control2 = add(targetLeadPoint, multiply(targetAnchor.normalVector, controlDistance));
+  const labelPoint = cubicPoint(sourceLeadPoint, control1, control2, targetLeadPoint, 0.5);
+  const tangent = cubicTangent(sourceLeadPoint, control1, control2, targetLeadPoint, 0.5);
 
   return {
-    start,
-    end,
-    control,
-    isStraight,
-    textPoint,
+    sourceAnchor,
+    sourceLeadPoint,
+    targetLeadPoint,
+    targetAnchor,
+    control1,
+    control2,
+    labelPoint,
     textAngle: Math.atan2(tangent.y, tangent.x),
+    samplePoints: sampleConnectionPath(sourceAnchor, sourceLeadPoint, control1, control2, targetLeadPoint, targetAnchor),
   };
 }
 
-export function getArrowAngle(path: ConnectionPath, at: 'start' | 'end'): number {
-  if (!path.control) {
-    return Math.atan2(path.end.y - path.start.y, path.end.x - path.start.x) + (at === 'start' ? Math.PI : 0);
-  }
+export function createPreviewPath(sourceAnchor: Anchor, pointer: Point): ConnectionPath {
+  const side = inferTargetSide(sourceAnchor.side);
+  const targetAnchor: Anchor = {
+    elementId: '__preview__',
+    side,
+    x: pointer.x,
+    y: pointer.y,
+    normalVector: getAnchorNormal(side),
+  };
+  return createConnectionPath(sourceAnchor, targetAnchor);
+}
 
-  const tangent =
-    at === 'start'
-      ? quadraticTangent(path.start, path.control, path.end, 0.02)
-      : quadraticTangent(path.start, path.control, path.end, 0.98);
-  return Math.atan2(tangent.y, tangent.x) + (at === 'start' ? Math.PI : 0);
+export function inferTargetSide(sourceSide: AnchorSide): AnchorSide {
+  if (sourceSide === 'right') return 'left';
+  if (sourceSide === 'left') return 'right';
+  if (sourceSide === 'top') return 'bottom';
+  return 'top';
+}
+
+export function getArrowAngle(path: ConnectionPath, at: 'start' | 'end'): number {
+  if (at === 'start') {
+    return Math.atan2(
+      path.sourceAnchor.y - path.sourceLeadPoint.y,
+      path.sourceAnchor.x - path.sourceLeadPoint.x,
+    );
+  }
+  return Math.atan2(
+    path.targetAnchor.y - path.targetLeadPoint.y,
+    path.targetAnchor.x - path.targetLeadPoint.x,
+  );
 }
 
 export function snapElement(
@@ -178,22 +280,62 @@ export function snapElement(
   };
 }
 
+export function resizeElementBox(
+  original: FlowElement,
+  handle: ResizeHandle,
+  deltaX: number,
+  deltaY: number,
+): ResizeResult {
+  let { x, y, width, height } = original;
+  const right = x + width;
+  const bottom = y + height;
+
+  if (handle.includes('right')) width += deltaX;
+  if (handle.includes('bottom')) height += deltaY;
+  if (handle.includes('left')) {
+    x += deltaX;
+    width -= deltaX;
+  }
+  if (handle.includes('top')) {
+    y += deltaY;
+    height -= deltaY;
+  }
+
+  if (width < MIN_ELEMENT_WIDTH) {
+    width = MIN_ELEMENT_WIDTH;
+    if (handle.includes('left')) x = right - width;
+  }
+  if (height < MIN_ELEMENT_HEIGHT) {
+    height = MIN_ELEMENT_HEIGHT;
+    if (handle.includes('top')) y = bottom - height;
+  }
+
+  return { x, y, width, height };
+}
+
+export function getResizeHandles(element: FlowElement, measurer?: Measurer): Array<{ handle: ResizeHandle; point: Point }> {
+  const box = getElementBox(element, measurer);
+  return [
+    { handle: 'top-left', point: { x: box.x, y: box.y } },
+    { handle: 'top', point: { x: box.x + box.width / 2, y: box.y } },
+    { handle: 'top-right', point: { x: box.x + box.width, y: box.y } },
+    { handle: 'right', point: { x: box.x + box.width, y: box.y + box.height / 2 } },
+    { handle: 'bottom-right', point: { x: box.x + box.width, y: box.y + box.height } },
+    { handle: 'bottom', point: { x: box.x + box.width / 2, y: box.y + box.height } },
+    { handle: 'bottom-left', point: { x: box.x, y: box.y + box.height } },
+    { handle: 'left', point: { x: box.x, y: box.y + box.height / 2 } },
+  ];
+}
+
 export function pointInElement(point: Point, element: FlowElement, measurer?: Measurer): boolean {
   const box = getElementBox(element, measurer);
   return point.x >= box.x && point.x <= box.x + box.width && point.y >= box.y && point.y <= box.y + box.height;
 }
 
 export function distanceToConnection(point: Point, path: ConnectionPath): number {
-  if (!path.control) {
-    return distanceToLineSegment(point, path.start, path.end);
-  }
-
   let shortest = Number.POSITIVE_INFINITY;
-  let previous = path.start;
-  for (let index = 1; index <= 24; index += 1) {
-    const current = quadraticPoint(path.start, path.control, path.end, index / 24);
-    shortest = Math.min(shortest, distanceToLineSegment(point, previous, current));
-    previous = current;
+  for (let index = 1; index < path.samplePoints.length; index += 1) {
+    shortest = Math.min(shortest, distanceToLineSegment(point, path.samplePoints[index - 1], path.samplePoints[index]));
   }
   return shortest;
 }
@@ -208,6 +350,26 @@ export function getTextOffset(position: Connection['textPosition'], angle: numbe
   };
 }
 
+export function distance(a: Point, b: Point): number {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+function sampleConnectionPath(
+  sourceAnchor: Point,
+  sourceLeadPoint: Point,
+  control1: Point,
+  control2: Point,
+  targetLeadPoint: Point,
+  targetAnchor: Point,
+): Point[] {
+  const points = [sourceAnchor, sourceLeadPoint];
+  for (let index = 1; index <= 28; index += 1) {
+    points.push(cubicPoint(sourceLeadPoint, control1, control2, targetLeadPoint, index / 28));
+  }
+  points.push(targetAnchor);
+  return points;
+}
+
 function boxAnchors(box: ElementBox) {
   return {
     left: box.x,
@@ -219,18 +381,19 @@ function boxAnchors(box: ElementBox) {
   };
 }
 
-function quadraticPoint(start: Point, control: Point, end: Point, t: number): Point {
-  const oneMinusT = 1 - t;
+function cubicPoint(start: Point, control1: Point, control2: Point, end: Point, t: number): Point {
+  const mt = 1 - t;
   return {
-    x: oneMinusT * oneMinusT * start.x + 2 * oneMinusT * t * control.x + t * t * end.x,
-    y: oneMinusT * oneMinusT * start.y + 2 * oneMinusT * t * control.y + t * t * end.y,
+    x: mt ** 3 * start.x + 3 * mt ** 2 * t * control1.x + 3 * mt * t ** 2 * control2.x + t ** 3 * end.x,
+    y: mt ** 3 * start.y + 3 * mt ** 2 * t * control1.y + 3 * mt * t ** 2 * control2.y + t ** 3 * end.y,
   };
 }
 
-function quadraticTangent(start: Point, control: Point, end: Point, t: number): Point {
+function cubicTangent(start: Point, control1: Point, control2: Point, end: Point, t: number): Point {
+  const mt = 1 - t;
   return {
-    x: 2 * (1 - t) * (control.x - start.x) + 2 * t * (end.x - control.x),
-    y: 2 * (1 - t) * (control.y - start.y) + 2 * t * (end.y - control.y),
+    x: 3 * mt ** 2 * (control1.x - start.x) + 6 * mt * t * (control2.x - control1.x) + 3 * t ** 2 * (end.x - control2.x),
+    y: 3 * mt ** 2 * (control1.y - start.y) + 6 * mt * t * (control2.y - control1.y) + 3 * t ** 2 * (end.y - control2.y),
   };
 }
 
@@ -241,6 +404,14 @@ function distanceToLineSegment(point: Point, start: Point, end: Point): number {
   if (lengthSquared === 0) return Math.hypot(point.x - start.x, point.y - start.y);
   const t = Math.max(0, Math.min(1, ((point.x - start.x) * dx + (point.y - start.y) * dy) / lengthSquared));
   return Math.hypot(point.x - (start.x + t * dx), point.y - (start.y + t * dy));
+}
+
+function add(a: Point, b: Point): Point {
+  return { x: a.x + b.x, y: a.y + b.y };
+}
+
+function multiply(point: Point, value: number): Point {
+  return { x: point.x * value, y: point.y * value };
 }
 
 function estimateTextWidth(text: string): number {

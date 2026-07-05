@@ -4,6 +4,23 @@ export type TextAlign = 'left' | 'center' | 'right';
 export type LineType = 'solid' | 'dashed';
 export type ArrowType = 'none' | 'start' | 'end' | 'both';
 export type ConnectionTextPosition = 'above' | 'below' | 'middle';
+export type AnchorSide = 'top' | 'right' | 'bottom' | 'left';
+export type ResizeHandle =
+  | 'top'
+  | 'right'
+  | 'bottom'
+  | 'left'
+  | 'top-left'
+  | 'top-right'
+  | 'bottom-left'
+  | 'bottom-right';
+export type EditorMode =
+  | 'idle'
+  | 'dragging-element'
+  | 'resizing-element'
+  | 'creating-connection'
+  | 'panning-canvas'
+  | 'editing-text';
 
 export interface FlowElement {
   id: string;
@@ -22,11 +39,27 @@ export interface FlowElement {
   borderWidth: number;
 }
 
+export interface ConnectionEndpoint {
+  elementId: string;
+  side: AnchorSide;
+}
+
+export interface Anchor {
+  elementId: string;
+  side: AnchorSide;
+  x: number;
+  y: number;
+  normalVector: Point;
+}
+
 export interface Connection {
   id: string;
-  sourceElementId: string;
-  targetElementId: string;
+  source: ConnectionEndpoint;
+  target: ConnectionEndpoint;
+  sourceElementId?: string;
+  targetElementId?: string;
   lineType: LineType;
+  lineWidth: number;
   dashLength: number;
   dashGap: number;
   arrow: ArrowType;
@@ -46,12 +79,28 @@ export interface AlignmentGuide {
   to: number;
 }
 
+export interface ViewportState {
+  x: number;
+  y: number;
+  zoom: number;
+}
+
 export interface EditorState {
   elements: FlowElement[];
   connections: Connection[];
   selection: Selection;
-  mode: 'select' | 'connect';
-  pendingConnectionSourceId: string | null;
+  viewport: ViewportState;
+  mode: EditorMode;
+  pendingConnectionSource: ConnectionEndpoint | null;
+  previewConnection: {
+    source: Anchor;
+    pointer: Point;
+    target: Anchor | null;
+  } | null;
+  hoverElementId: string | null;
+  hoverConnectionId: string | null;
+  hoverAnchor: ConnectionEndpoint | null;
+  hoverResizeHandle: ResizeHandle | null;
   guides: AlignmentGuide[];
 }
 

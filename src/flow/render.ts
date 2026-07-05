@@ -1,13 +1,36 @@
-import type { AlignmentGuide, Connection, FlowElement, Selection } from '../types/flow';
+import type {
+  AlignmentGuide,
+  Anchor,
+  Connection,
+  ConnectionEndpoint,
+  FlowElement,
+  ResizeHandle,
+  Selection,
+  ViewportState,
+} from '../types/flow';
 import {
+  createConnectionPath,
+  createPreviewPath,
+  getAnchorHandlePoint,
   getArrowAngle,
   getConnectionPath,
+  getElementAnchors,
   getElementBox,
+  getResizeHandles,
   getTextOffset,
+  type ConnectionPath,
   type Measurer,
 } from './geometry';
 
 const FONT = '14px Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+
+export interface RenderOptions {
+  hoverElementId: string | null;
+  hoverConnectionId: string | null;
+  hoverAnchor: ConnectionEndpoint | null;
+  hoverResizeHandle: ResizeHandle | null;
+  previewConnection: { source: Anchor; pointer: { x: number; y: number }; target: Anchor | null } | null;
+}
 
 export function renderFlow(
   context: CanvasRenderingContext2D,
@@ -16,39 +39,67 @@ export function renderFlow(
   connections: Connection[],
   selection: Selection,
   guides: AlignmentGuide[],
+  viewport: ViewportState,
+  options: RenderOptions,
 ) {
   context.clearRect(0, 0, canvas.width, canvas.height);
   context.save();
   context.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
-  drawBackground(context, canvas);
+  drawBackground(context, canvas, viewport);
+  context.translate(viewport.x, viewport.y);
+  context.scale(viewport.zoom, viewport.zoom);
   const measurer: Measurer = context;
 
   connections.forEach((connection) => {
-    drawConnection(context, connection, elements, selection?.type === 'connection' && selection.id === connection.id, measurer);
+    const selected = selection?.type === 'connection' && selection.id === connection.id;
+    const hovered = options.hoverConnectionId === connection.id;
+    drawConnection(context, connection, elements, selected, hovered, measurer);
   });
+
+  if (options.previewConnection) {
+    drawPreviewConnection(context, options.previewConnection.source, options.previewConnection.pointer, options.previewConnection.target);
+  }
+
   elements.forEach((element) => {
-    drawElement(context, element, selection?.type === 'element' && selection.id === element.id, measurer);
+    const selected = selection?.type === 'element' && selection.id === element.id;
+    const hovered = options.hoverElementId === element.id;
+    drawElement(context, element, selected, hovered, measurer);
   });
+
+  elements.forEach((element) => {
+    const selected = selection?.type === 'element' && selection.id === element.id;
+    const hovered = options.hoverElementId === element.id;
+    if ((selected || hovered) && element.sizeMode === 'fixed') {
+      drawResizeHandles(context, element, options.hoverResizeHandle, measurer);
+    }
+    if (selected || hovered) {
+      drawAnchorHandles(context, element, options.hoverAnchor, measurer);
+    }
+  });
+
   drawGuides(context, guides);
   context.restore();
 }
 
-function drawBackground(context: CanvasRenderingContext2D, canvas: HTMLCanvasElement) {
+function drawBackground(context: CanvasRenderingContext2D, canvas: HTMLCanvasElement, viewport: ViewportState) {
   const width = canvas.width / (window.devicePixelRatio || 1);
   const height = canvas.height / (window.devicePixelRatio || 1);
   context.fillStyle = '#f5f7fb';
   context.fillRect(0, 0, width, height);
   context.strokeStyle = '#e2e8f0';
   context.lineWidth = 1;
+  const gridSize = 24 * viewport.zoom;
+  const startX = ((viewport.x % gridSize) + gridSize) % gridSize;
+  const startY = ((viewport.y % gridSize) + gridSize) % gridSize;
 
-  for (let x = 0; x < width; x += 24) {
+  for (let x = startX; x < width; x += gridSize) {
     context.beginPath();
     context.moveTo(x, 0);
     context.lineTo(x, height);
     context.stroke();
   }
 
-  for (let y = 0; y < height; y += 24) {
+  for (let y = startY; y < height; y += gridSize) {
     context.beginPath();
     context.moveTo(0, y);
     context.lineTo(width, y);
@@ -56,12 +107,13 @@ function drawBackground(context: CanvasRenderingContext2D, canvas: HTMLCanvasEle
   }
 }
 
-function drawElement(context: CanvasRenderingContext2D, element: FlowElement, selected: boolean, measurer: Measurer) {
+function drawElement(context: CanvasRenderingContext2D, element: FlowElement, selected: boolean, hovered: boolean, measurer: Measurer) {
   const box = getElementBox(element, measurer);
   context.save();
+  const emphasisWidth = selected ? 2 : hovered ? 1.5 : 0;
   context.fillStyle = element.backgroundColor;
-  context.strokeStyle = element.borderColor;
-  context.lineWidth = element.borderWidth;
+  context.strokeStyle = selected ? '#ef4444' : hovered ? '#2563eb' : element.borderColor;
+  context.lineWidth = Math.max(1, element.borderWidth + emphasisWidth);
   context.setLineDash([]);
   createElementPath(context, element, box);
   context.fill();
@@ -79,18 +131,6 @@ function drawElement(context: CanvasRenderingContext2D, element: FlowElement, se
         : box.x + box.width / 2;
   context.fillText(element.text, textX, box.y + box.height / 2, Math.max(12, box.width - element.padding * 2));
 
-  if (selected) {
-    context.strokeStyle = '#0f172a';
-    context.lineWidth = 1.5;
-    context.setLineDash([6, 4]);
-    context.strokeRect(box.x - 7, box.y - 7, box.width + 14, box.height + 14);
-    context.setLineDash([]);
-    drawHandle(context, box.x - 7, box.y - 7);
-    drawHandle(context, box.x + box.width + 7, box.y - 7);
-    drawHandle(context, box.x - 7, box.y + box.height + 7);
-    drawHandle(context, box.x + box.width + 7, box.y + box.height + 7);
-  }
-
   context.restore();
 }
 
@@ -99,95 +139,127 @@ function drawConnection(
   connection: Connection,
   elements: FlowElement[],
   selected: boolean,
+  hovered: boolean,
   measurer: Measurer,
 ) {
   const path = getConnectionPath(connection, elements, measurer);
   if (!path) return;
 
   context.save();
-  context.strokeStyle = selected ? '#ef4444' : '#475569';
-  context.fillStyle = selected ? '#ef4444' : '#475569';
-  context.lineWidth = selected ? 3 : 2;
+  context.strokeStyle = selected ? '#ef4444' : hovered ? '#2563eb' : '#475569';
+  context.fillStyle = selected ? '#ef4444' : hovered ? '#2563eb' : '#475569';
+  context.lineWidth = (connection.lineWidth ?? 1) + (selected || hovered ? 1.5 : 0);
   context.setLineDash(connection.lineType === 'dashed' ? [connection.dashLength, connection.dashGap] : []);
-
-  if (connection.text && connection.textPosition === 'middle') {
-    drawBrokenPath(context, path, connection.text);
-  } else {
-    context.beginPath();
-    context.moveTo(path.start.x, path.start.y);
-    if (path.control) context.quadraticCurveTo(path.control.x, path.control.y, path.end.x, path.end.y);
-    else context.lineTo(path.end.x, path.end.y);
-    context.stroke();
-  }
+  drawConnectionPath(context, path);
 
   context.setLineDash([]);
   if (connection.arrow === 'start' || connection.arrow === 'both') {
-    drawArrow(context, path.start.x, path.start.y, getArrowAngle(path, 'start'));
+    drawArrow(context, path.sourceAnchor.x, path.sourceAnchor.y, getArrowAngle(path, 'start'));
   }
   if (connection.arrow === 'end' || connection.arrow === 'both') {
-    drawArrow(context, path.end.x, path.end.y, getArrowAngle(path, 'end'));
+    drawArrow(context, path.targetAnchor.x, path.targetAnchor.y, getArrowAngle(path, 'end'));
   }
   drawConnectionText(context, connection, path);
   context.restore();
 }
 
-function drawBrokenPath(context: CanvasRenderingContext2D, path: NonNullable<ReturnType<typeof getConnectionPath>>, text: string) {
-  const textWidth = context.measureText(text).width + 28;
-  const length = Math.hypot(path.end.x - path.start.x, path.end.y - path.start.y);
-  const gapRatio = Math.min(0.22, textWidth / Math.max(length, 1) / 2);
-  drawPartialPath(context, path, 0, 0.5 - gapRatio);
-  drawPartialPath(context, path, 0.5 + gapRatio, 1);
+function drawPreviewConnection(
+  context: CanvasRenderingContext2D,
+  source: Anchor,
+  pointer: { x: number; y: number },
+  target: Anchor | null,
+) {
+  const path = target ? createConnectionPath(source, target) : createPreviewPath(source, pointer);
+  context.save();
+  context.strokeStyle = '#aab2c0';
+  context.fillStyle = '#aab2c0';
+  context.lineWidth = 1.5;
+  context.setLineDash([8, 8]);
+  drawConnectionPath(context, path);
+  context.setLineDash([]);
+  drawArrow(context, path.targetAnchor.x, path.targetAnchor.y, getArrowAngle(path, 'end'));
+  context.restore();
 }
 
-function drawPartialPath(
-  context: CanvasRenderingContext2D,
-  path: NonNullable<ReturnType<typeof getConnectionPath>>,
-  startT: number,
-  endT: number,
-) {
-  const steps = path.control ? 24 : 1;
+function drawConnectionPath(context: CanvasRenderingContext2D, path: ConnectionPath) {
   context.beginPath();
-  for (let index = 0; index <= steps; index += 1) {
-    const t = startT + (endT - startT) * (index / steps);
-    const point = path.control
-      ? {
-          x:
-            (1 - t) * (1 - t) * path.start.x +
-            2 * (1 - t) * t * path.control.x +
-            t * t * path.end.x,
-          y:
-            (1 - t) * (1 - t) * path.start.y +
-            2 * (1 - t) * t * path.control.y +
-            t * t * path.end.y,
-        }
-      : {
-          x: path.start.x + (path.end.x - path.start.x) * t,
-          y: path.start.y + (path.end.y - path.start.y) * t,
-        };
-    if (index === 0) context.moveTo(point.x, point.y);
-    else context.lineTo(point.x, point.y);
-  }
+  context.moveTo(path.sourceAnchor.x, path.sourceAnchor.y);
+  context.lineTo(path.sourceLeadPoint.x, path.sourceLeadPoint.y);
+  context.bezierCurveTo(
+    path.control1.x,
+    path.control1.y,
+    path.control2.x,
+    path.control2.y,
+    path.targetLeadPoint.x,
+    path.targetLeadPoint.y,
+  );
+  context.lineTo(path.targetAnchor.x, path.targetAnchor.y);
   context.stroke();
 }
 
-function drawConnectionText(
-  context: CanvasRenderingContext2D,
-  connection: Connection,
-  path: NonNullable<ReturnType<typeof getConnectionPath>>,
-) {
+function drawConnectionText(context: CanvasRenderingContext2D, connection: Connection, path: ConnectionPath) {
   if (!connection.text) return;
   const offset = getTextOffset(connection.textPosition, path.textAngle);
-  const textX = path.textPoint.x + offset.x;
-  const textY = path.textPoint.y + offset.y;
-  const metrics = context.measureText(connection.text);
+  const textX = path.labelPoint.x + offset.x;
+  const textY = path.labelPoint.y + offset.y;
 
   context.font = FONT;
+  const metrics = context.measureText(connection.text);
   context.textAlign = 'center';
   context.textBaseline = 'middle';
   context.fillStyle = '#f5f7fb';
   context.fillRect(textX - metrics.width / 2 - 8, textY - 10, metrics.width + 16, 20);
   context.fillStyle = '#1f2937';
   context.fillText(connection.text, textX, textY);
+}
+
+function drawAnchorHandles(
+  context: CanvasRenderingContext2D,
+  element: FlowElement,
+  hoverAnchor: ConnectionEndpoint | null,
+  measurer: Measurer,
+) {
+  for (const anchor of getElementAnchors(element, measurer)) {
+    const point = getAnchorHandlePoint(anchor);
+    const hovered = hoverAnchor?.elementId === anchor.elementId && hoverAnchor.side === anchor.side;
+    context.save();
+    context.fillStyle = hovered ? '#2563eb' : '#ffffff';
+    context.strokeStyle = hovered ? '#1d4ed8' : '#94a3b8';
+    context.lineWidth = hovered ? 2 : 1.5;
+    context.beginPath();
+    context.arc(point.x, point.y, hovered ? 9 : 7, 0, Math.PI * 2);
+    context.fill();
+    context.stroke();
+    context.strokeStyle = hovered ? '#ffffff' : '#2563eb';
+    context.lineWidth = 2;
+    context.beginPath();
+    context.moveTo(point.x - 3.5, point.y);
+    context.lineTo(point.x + 3.5, point.y);
+    context.moveTo(point.x, point.y - 3.5);
+    context.lineTo(point.x, point.y + 3.5);
+    context.stroke();
+    context.restore();
+  }
+}
+
+function drawResizeHandles(
+  context: CanvasRenderingContext2D,
+  element: FlowElement,
+  hoverResizeHandle: ResizeHandle | null,
+  measurer: Measurer,
+) {
+  for (const { handle, point } of getResizeHandles(element, measurer)) {
+    const hovered = hoverResizeHandle === handle;
+    context.save();
+    context.fillStyle = hovered ? '#0f172a' : '#ffffff';
+    context.strokeStyle = '#0f172a';
+    context.lineWidth = 1.3;
+    context.beginPath();
+    context.rect(point.x - 5, point.y - 5, 10, 10);
+    context.fill();
+    context.stroke();
+    context.restore();
+  }
 }
 
 function createElementPath(context: CanvasRenderingContext2D, element: FlowElement, box: ReturnType<typeof getElementBox>) {
@@ -211,16 +283,6 @@ function drawArrow(context: CanvasRenderingContext2D, x: number, y: number, angl
   context.lineTo(x - size * Math.cos(angle + Math.PI / 6), y - size * Math.sin(angle + Math.PI / 6));
   context.closePath();
   context.fill();
-}
-
-function drawHandle(context: CanvasRenderingContext2D, x: number, y: number) {
-  context.fillStyle = '#ffffff';
-  context.strokeStyle = '#0f172a';
-  context.lineWidth = 1.5;
-  context.beginPath();
-  context.rect(x - 4, y - 4, 8, 8);
-  context.fill();
-  context.stroke();
 }
 
 function drawGuides(context: CanvasRenderingContext2D, guides: AlignmentGuide[]) {
