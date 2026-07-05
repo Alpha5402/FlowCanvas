@@ -234,7 +234,7 @@ function onPointerDown(event: PointerEvent) {
   const point = screenToWorld(screenPoint);
   const context = canvas.getContext('2d') ?? undefined;
   const multiSelect = isMultiSelectEvent(event);
-  const controlsDisabled = selectedCount.value > 1;
+  const elementControlsHidden = selectedElements.value.length > 1;
 
   if (state.mode === 'creating-connection' && state.pendingConnectionSource && state.previewConnection) {
     completeConnectionCreation(point, context);
@@ -255,7 +255,7 @@ function onPointerDown(event: PointerEvent) {
     return;
   }
 
-  const anchor = controlsDisabled ? null : hitTestAnchorHandle(point, state.elements, context);
+  const anchor = elementControlsHidden ? null : hitTestAnchorHandle(point, state.elements, context);
   if (anchor) {
     state.mode = 'creating-connection';
     connectionStartedAt.value = Date.now();
@@ -270,7 +270,7 @@ function onPointerDown(event: PointerEvent) {
 
   const element = hitTestElement(point, state.elements, context);
   const selected = selectedElement.value;
-  const resizeHit = controlsDisabled ? null : hitTestResizeHandleOnElements(point, state.elements, context);
+  const resizeHit = elementControlsHidden ? null : hitTestResizeHandleOnElements(point, state.elements, context);
   const resizeTarget = resizeHit?.element ?? element ?? selected;
   const resizeHandle = resizeHit?.handle ?? hitTestResizeHandle(point, resizeTarget, context);
   if (resizeTarget && resizeHandle) {
@@ -839,10 +839,10 @@ function onCanvasDoubleClick() {
 function refreshHover(point: Point) {
   const canvas = canvasRef.value;
   const context = canvas?.getContext('2d') ?? undefined;
-  const controlsDisabled = selectedCount.value > 1;
-  const anchor = controlsDisabled ? null : hitTestAnchorHandle(point, state.elements, context);
+  const elementControlsHidden = selectedElements.value.length > 1;
+  const anchor = elementControlsHidden ? null : hitTestAnchorHandle(point, state.elements, context);
   const element = hitTestElement(point, state.elements, context);
-  const resizeHit = controlsDisabled ? null : hitTestResizeHandleOnElements(point, state.elements, context);
+  const resizeHit = elementControlsHidden ? null : hitTestResizeHandleOnElements(point, state.elements, context);
   const resizeHandle = resizeHit?.handle ?? null;
   const connection = hitTestConnection(point, state.connections, state.elements, context);
 

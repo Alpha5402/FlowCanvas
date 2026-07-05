@@ -50,7 +50,8 @@ export function renderFlow(
   context.translate(viewport.x, viewport.y);
   context.scale(viewport.zoom, viewport.zoom);
   const measurer: Measurer = context;
-  const selectionIsPlural = getSelectionItems(selection).length > 1;
+  const selectedElementCount = getSelectionItems(selection).filter((item) => item.type === 'element').length;
+  const elementControlsHidden = selectedElementCount > 1;
 
   connections.forEach((connection) => {
     const selected = isSelected(selection, 'connection', connection.id);
@@ -71,10 +72,10 @@ export function renderFlow(
   elements.forEach((element) => {
     const selected = isSelected(selection, 'element', element.id);
     const hovered = options.hoverElementId === element.id;
-    if (!selectionIsPlural && (selected || hovered) && element.sizeMode === 'fixed') {
+    if (!elementControlsHidden && (selected || hovered) && element.sizeMode === 'fixed') {
       drawResizeHandles(context, element, options.hoverResizeHandle, measurer);
     }
-    if (!selectionIsPlural && (selected || hovered)) {
+    if (!elementControlsHidden && (selected || hovered)) {
       drawAnchorHandles(context, element, options.hoverAnchor, measurer);
     }
   });
