@@ -22,6 +22,7 @@ import {
   cloneSelection,
   deleteSelectionFromFlow,
   getSelectionItems,
+  isSelected,
   pushHistory,
   redo,
   toggleSelection,
@@ -100,9 +101,11 @@ const showBatchConnectionForm = computed(() => selectedConnections.value.length 
 const exportStatus = ref('');
 
 const drag = ref<{
-  id: string;
+  primaryId: string;
+  ids: string[];
   offsetX: number;
   offsetY: number;
+  originals: Array<{ id: string; x: number; y: number }>;
   startSnapshot: FlowSnapshot;
   moved: boolean;
 } | null>(null);
@@ -206,7 +209,11 @@ function addElement() {
   recordHistory();
   const stage = stageRef.value;
   const rect = stage?.getBoundingClientRect();
-  const next = createElement(Math.max(80, (rect?.width ?? 900) / 2 - 75), Math.max(70, (rect?.height ?? 600) / 2 - 36));
+  const center = screenToWorld({
+    x: (rect?.width ?? 900) / 2,
+    y: (rect?.height ?? 600) / 2,
+  });
+  const next = createElement(center.x - 75, center.y - 36);
   state.elements.push(next);
   state.selection = { type: 'element', id: next.id };
   state.mode = 'idle';
@@ -301,12 +308,16 @@ function onPointerDown(event: PointerEvent) {
       return;
     }
 
+    const draggingSelection = selectedElements.value.length > 1 && isSelected(state.selection, 'element', element.id);
+    if (!draggingSelection) state.selection = { type: 'element', id: element.id };
+    const draggedElements = draggingSelection ? selectedElements.value : [element];
     const box = getElementBox(element, context);
-    state.selection = { type: 'element', id: element.id };
     drag.value = {
-      id: element.id,
+      primaryId: element.id,
+      ids: draggedElements.map((item) => item.id),
       offsetX: point.x - box.x,
       offsetY: point.y - box.y,
+      originals: draggedElements.map((item) => ({ id: item.id, x: item.x, y: item.y })),
       startSnapshot: snapshot(),
       moved: false,
     };
@@ -375,11 +386,22 @@ function onPointerMove(event: PointerEvent) {
   }
 
   if (state.mode === 'dragging-element' && drag.value) {
-    const moving = state.elements.find((element) => element.id === drag.value?.id);
+    const moving = state.elements.find((element) => element.id === drag.value?.primaryId);
     if (!moving) return;
-    const snapped = snapElement(moving, state.elements, point.x - drag.value.offsetX, point.y - drag.value.offsetY, context);
-    moving.x = snapped.x;
-    moving.y = snapped.y;
+    const originalPrimary = drag.value.originals.find((item) => item.id === drag.value?.primaryId);
+    if (!originalPrimary) return;
+    const proposedX = point.x - drag.value.offsetX;
+    const proposedY = point.y - drag.value.offsetY;
+    const movingIds = new Set(drag.value.ids);
+    const snapped = snapElement(moving, state.elements.filter((element) => !movingIds.has(element.id)), proposedX, proposedY, context);
+    const deltaX = snapped.x - originalPrimary.x;
+    const deltaY = snapped.y - originalPrimary.y;
+    for (const original of drag.value.originals) {
+      const element = state.elements.find((item) => item.id === original.id);
+      if (!element) continue;
+      element.x = original.x + deltaX;
+      element.y = original.y + deltaY;
+    }
     state.guides = snapped.guides;
     drag.value.moved = true;
     updateCursor('grabbing');
