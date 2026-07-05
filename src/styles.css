@@ -141,6 +141,18 @@ h2 {
   background: #f8fafc;
 }
 
+.export-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.export-status {
+  color: #64748b;
+  font-size: 12px;
+  text-align: center;
+}
+
 .stage {
   position: relative;
   min-width: 0;

@@ -8,6 +8,7 @@ import type {
   Selection,
   ViewportState,
 } from '../types/flow';
+import { getSelectionItems, isSelected } from './state';
 import {
   createConnectionPath,
   createPreviewPath,
@@ -49,9 +50,10 @@ export function renderFlow(
   context.translate(viewport.x, viewport.y);
   context.scale(viewport.zoom, viewport.zoom);
   const measurer: Measurer = context;
+  const selectionIsPlural = getSelectionItems(selection).length > 1;
 
   connections.forEach((connection) => {
-    const selected = selection?.type === 'connection' && selection.id === connection.id;
+    const selected = isSelected(selection, 'connection', connection.id);
     const hovered = options.hoverConnectionId === connection.id;
     drawConnection(context, connection, elements, selected, hovered, measurer);
   });
@@ -61,18 +63,18 @@ export function renderFlow(
   }
 
   elements.forEach((element) => {
-    const selected = selection?.type === 'element' && selection.id === element.id;
+    const selected = isSelected(selection, 'element', element.id);
     const hovered = options.hoverElementId === element.id;
     drawElement(context, element, selected, hovered, measurer);
   });
 
   elements.forEach((element) => {
-    const selected = selection?.type === 'element' && selection.id === element.id;
+    const selected = isSelected(selection, 'element', element.id);
     const hovered = options.hoverElementId === element.id;
-    if ((selected || hovered) && element.sizeMode === 'fixed') {
+    if (!selectionIsPlural && (selected || hovered) && element.sizeMode === 'fixed') {
       drawResizeHandles(context, element, options.hoverResizeHandle, measurer);
     }
-    if (selected || hovered) {
+    if (!selectionIsPlural && (selected || hovered)) {
       drawAnchorHandles(context, element, options.hoverAnchor, measurer);
     }
   });

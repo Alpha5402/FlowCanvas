@@ -4,6 +4,7 @@ import { createConnection, createElement } from './flow/defaults';
 import {
   findAnchor,
   getElementBox,
+  getConnectionPath,
   inferTargetSide,
   resizeElementBox,
   snapElement,
@@ -17,8 +18,18 @@ import {
   hitTestResizeHandleOnElements,
 } from './flow/hitTesting';
 import { renderFlow } from './flow/render';
-import { deleteSelectionFromFlow, pushHistory, redo, undo, type FlowSnapshot, type HistoryState } from './flow/state';
-import type { Anchor, Connection, EditorState, FlowElement, Point, ResizeHandle } from './types/flow';
+import {
+  cloneSelection,
+  deleteSelectionFromFlow,
+  getSelectionItems,
+  pushHistory,
+  redo,
+  toggleSelection,
+  undo,
+  type FlowSnapshot,
+  type HistoryState,
+} from './flow/state';
+import type { Anchor, Connection, EditorState, FlowElement, Point, ResizeHandle, Selection } from './types/flow';
 
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 const stageRef = ref<HTMLElement | null>(null);
@@ -59,14 +70,34 @@ const history = reactive<HistoryState>({
   future: [],
 });
 
-const selectedElement = computed(() =>
-  state.selection?.type === 'element' ? state.elements.find((element) => element.id === state.selection?.id) ?? null : null,
+const selectedItems = computed(() => getSelectionItems(state.selection));
+const selectedCount = computed(() => selectedItems.value.length);
+const selectedElement = computed(() => {
+  const items = selectedItems.value;
+  if (items.length !== 1 || items[0].type !== 'element') return null;
+  return state.elements.find((element) => element.id === items[0].id) ?? null;
+});
+const selectedConnection = computed(() => {
+  const items = selectedItems.value;
+  if (items.length !== 1 || items[0].type !== 'connection') return null;
+  return state.connections.find((connection) => connection.id === items[0].id) ?? null;
+});
+const selectedElements = computed(() =>
+  selectedItems.value
+    .filter((item) => item.type === 'element')
+    .map((item) => state.elements.find((element) => element.id === item.id))
+    .filter((element): element is FlowElement => Boolean(element)),
 );
-const selectedConnection = computed(() =>
-  state.selection?.type === 'connection'
-    ? state.connections.find((connection) => connection.id === state.selection?.id) ?? null
-    : null,
+const selectedConnections = computed(() =>
+  selectedItems.value
+    .filter((item) => item.type === 'connection')
+    .map((item) => state.connections.find((connection) => connection.id === item.id))
+    .filter((connection): connection is Connection => Boolean(connection)),
 );
+const hasMixedSelection = computed(() => selectedElements.value.length > 0 && selectedConnections.value.length > 0);
+const showBatchElementForm = computed(() => selectedElements.value.length > 1 && selectedConnections.value.length === 0);
+const showBatchConnectionForm = computed(() => selectedConnections.value.length > 1 && selectedElements.value.length === 0);
+const exportStatus = ref('');
 
 const drag = ref<{
   id: string;
@@ -185,12 +216,18 @@ function addElement() {
   });
 }
 
+function isMultiSelectEvent(event: PointerEvent | MouseEvent) {
+  return event.metaKey || event.ctrlKey;
+}
+
 function onPointerDown(event: PointerEvent) {
   const canvas = canvasRef.value;
   if (!canvas) return;
   const screenPoint = canvasPoint(event);
   const point = screenToWorld(screenPoint);
   const context = canvas.getContext('2d') ?? undefined;
+  const multiSelect = isMultiSelectEvent(event);
+  const controlsDisabled = selectedCount.value > 1;
 
   if (state.mode === 'creating-connection' && state.pendingConnectionSource && state.previewConnection) {
     completeConnectionCreation(point, context);
@@ -211,7 +248,7 @@ function onPointerDown(event: PointerEvent) {
     return;
   }
 
-  const anchor = hitTestAnchorHandle(point, state.elements, context);
+  const anchor = controlsDisabled ? null : hitTestAnchorHandle(point, state.elements, context);
   if (anchor) {
     state.mode = 'creating-connection';
     connectionStartedAt.value = Date.now();
@@ -226,7 +263,7 @@ function onPointerDown(event: PointerEvent) {
 
   const element = hitTestElement(point, state.elements, context);
   const selected = selectedElement.value;
-  const resizeHit = hitTestResizeHandleOnElements(point, state.elements, context);
+  const resizeHit = controlsDisabled ? null : hitTestResizeHandleOnElements(point, state.elements, context);
   const resizeTarget = resizeHit?.element ?? element ?? selected;
   const resizeHandle = resizeHit?.handle ?? hitTestResizeHandle(point, resizeTarget, context);
   if (resizeTarget && resizeHandle) {
@@ -248,13 +285,22 @@ function onPointerDown(event: PointerEvent) {
 
   const connection = hitTestConnection(point, state.connections, state.elements, context);
   if (connection) {
-    state.selection = { type: 'connection', id: connection.id };
+    state.selection = multiSelect
+      ? toggleSelection(state.selection, { type: 'connection', id: connection.id })
+      : { type: 'connection', id: connection.id };
     state.mode = 'idle';
     draw();
     return;
   }
 
   if (element) {
+    if (multiSelect) {
+      state.selection = toggleSelection(state.selection, { type: 'element', id: element.id });
+      state.mode = 'idle';
+      draw();
+      return;
+    }
+
     const box = getElementBox(element, context);
     state.selection = { type: 'element', id: element.id };
     drag.value = {
@@ -271,7 +317,7 @@ function onPointerDown(event: PointerEvent) {
     return;
   }
 
-  state.selection = null;
+  if (!multiSelect) state.selection = null;
   state.mode = 'panning-canvas';
   pan.value = {
     startPoint: screenPoint,
@@ -475,6 +521,157 @@ function resetView() {
   draw();
 }
 
+function getExportSelection(): Selection {
+  return selectedCount.value > 0 ? cloneSelection(state.selection) : null;
+}
+
+function getExportContent() {
+  const selectionItems = selectedItems.value;
+  const selectedElementIds = new Set(selectionItems.filter((item) => item.type === 'element').map((item) => item.id));
+  const selectedConnectionIds = new Set(selectionItems.filter((item) => item.type === 'connection').map((item) => item.id));
+  const hasSelection = selectionItems.length > 0;
+
+  const connections = hasSelection
+    ? state.connections.filter(
+        (connection) =>
+          selectedConnectionIds.has(connection.id) ||
+          (selectedElementIds.has(connection.source.elementId) && selectedElementIds.has(connection.target.elementId)),
+      )
+    : state.connections;
+
+  const requiredElementIds = new Set(selectedElementIds);
+  for (const connection of connections) {
+    requiredElementIds.add(connection.source.elementId);
+    requiredElementIds.add(connection.target.elementId);
+  }
+
+  const elements = hasSelection
+    ? state.elements.filter((element) => requiredElementIds.has(element.id))
+    : state.elements;
+
+  return { elements, connections };
+}
+
+function getExportBounds(
+  elements: FlowElement[],
+  connections: Connection[],
+  measurer?: CanvasRenderingContext2D,
+) {
+  let minX = Number.POSITIVE_INFINITY;
+  let minY = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  let maxY = Number.NEGATIVE_INFINITY;
+
+  function includePoint(point: Point) {
+    minX = Math.min(minX, point.x);
+    minY = Math.min(minY, point.y);
+    maxX = Math.max(maxX, point.x);
+    maxY = Math.max(maxY, point.y);
+  }
+
+  for (const element of elements) {
+    const box = getElementBox(element, measurer);
+    includePoint({ x: box.x, y: box.y });
+    includePoint({ x: box.x + box.width, y: box.y + box.height });
+  }
+
+  for (const connection of connections) {
+    const path = getConnectionPath(connection, state.elements, measurer);
+    if (!path) continue;
+    for (const point of path.samplePoints) includePoint(point);
+  }
+
+  if (!Number.isFinite(minX) || !Number.isFinite(minY) || !Number.isFinite(maxX) || !Number.isFinite(maxY)) {
+    return null;
+  }
+
+  return { minX, minY, maxX, maxY };
+}
+
+function createExportCanvas() {
+  const sourceCanvas = canvasRef.value;
+  const sourceContext = sourceCanvas?.getContext('2d') ?? undefined;
+  const content = getExportContent();
+  const bounds = getExportBounds(content.elements, content.connections, sourceContext);
+  if (!bounds) return null;
+
+  const padding = 36;
+  const width = Math.max(1, Math.ceil(bounds.maxX - bounds.minX + padding * 2));
+  const height = Math.max(1, Math.ceil(bounds.maxY - bounds.minY + padding * 2));
+  const pixelRatio = window.devicePixelRatio || 1;
+  const exportCanvas = document.createElement('canvas');
+  exportCanvas.width = Math.ceil(width * pixelRatio);
+  exportCanvas.height = Math.ceil(height * pixelRatio);
+  exportCanvas.style.width = `${width}px`;
+  exportCanvas.style.height = `${height}px`;
+
+  const context = exportCanvas.getContext('2d');
+  if (!context) return null;
+
+  renderFlow(
+    context,
+    exportCanvas,
+    content.elements,
+    content.connections,
+    getExportSelection(),
+    [],
+    {
+      x: padding - bounds.minX,
+      y: padding - bounds.minY,
+      zoom: 1,
+    },
+    {
+      hoverElementId: null,
+      hoverConnectionId: null,
+      hoverAnchor: null,
+      hoverResizeHandle: null,
+      previewConnection: null,
+    },
+  );
+
+  return exportCanvas;
+}
+
+function canvasToPngBlob(canvas: HTMLCanvasElement) {
+  return new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (blob) resolve(blob);
+      else reject(new Error('Could not export the canvas image.'));
+    }, 'image/png');
+  });
+}
+
+async function downloadImage() {
+  const exportCanvas = createExportCanvas();
+  if (!exportCanvas) {
+    exportStatus.value = 'Nothing to export';
+    return;
+  }
+  const blob = await canvasToPngBlob(exportCanvas);
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = selectedCount.value > 0 ? 'flowcanvas-selection.png' : 'flowcanvas-board.png';
+  link.click();
+  URL.revokeObjectURL(url);
+  exportStatus.value = 'Image downloaded';
+}
+
+async function copyImage() {
+  const exportCanvas = createExportCanvas();
+  if (!exportCanvas) {
+    exportStatus.value = 'Nothing to copy';
+    return;
+  }
+  try {
+    const blob = await canvasToPngBlob(exportCanvas);
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+    exportStatus.value = 'Image copied';
+  } catch {
+    exportStatus.value = 'Copy is unavailable in this browser';
+  }
+}
+
 function finishPointerInteraction(pointerId?: number) {
   if (pointerId !== undefined) {
     try {
@@ -516,6 +713,43 @@ function updateConnection<K extends keyof Connection>(connection: Connection, ke
   recordHistory();
   connection[key] = value;
   draw();
+}
+
+function getSharedValue<T extends Record<string, unknown>, K extends keyof T>(items: T[], key: K): T[K] | '' {
+  if (items.length === 0) return '';
+  const first = items[0][key];
+  return items.every((item) => Object.is(item[key], first)) ? first : '';
+}
+
+function batchElementValue<K extends keyof FlowElement>(key: K): FlowElement[K] | '' {
+  return getSharedValue(selectedElements.value as unknown as Array<Record<string, unknown>>, key as string) as FlowElement[K] | '';
+}
+
+function batchConnectionValue<K extends keyof Connection>(key: K): Connection[K] | '' {
+  return getSharedValue(selectedConnections.value as unknown as Array<Record<string, unknown>>, key as string) as Connection[K] | '';
+}
+
+function updateSelectedElements<K extends keyof FlowElement>(key: K, value: FlowElement[K]) {
+  if (selectedElements.value.length === 0) return;
+  recordHistory();
+  for (const element of selectedElements.value) {
+    element[key] = value;
+  }
+  draw();
+}
+
+function updateSelectedConnections<K extends keyof Connection>(key: K, value: Connection[K]) {
+  if (selectedConnections.value.length === 0) return;
+  recordHistory();
+  for (const connection of selectedConnections.value) {
+    connection[key] = value;
+  }
+  draw();
+}
+
+function updateSelectedElementColor(key: 'backgroundColor' | 'borderColor', value: string) {
+  if (!/^#[0-9a-f]{6}$/i.test(value)) return;
+  updateSelectedElements(key, value);
 }
 
 function undoAction() {
@@ -583,9 +817,10 @@ function onCanvasDoubleClick() {
 function refreshHover(point: Point) {
   const canvas = canvasRef.value;
   const context = canvas?.getContext('2d') ?? undefined;
-  const anchor = hitTestAnchorHandle(point, state.elements, context);
+  const controlsDisabled = selectedCount.value > 1;
+  const anchor = controlsDisabled ? null : hitTestAnchorHandle(point, state.elements, context);
   const element = hitTestElement(point, state.elements, context);
-  const resizeHit = hitTestResizeHandleOnElements(point, state.elements, context);
+  const resizeHit = controlsDisabled ? null : hitTestResizeHandleOnElements(point, state.elements, context);
   const resizeHandle = resizeHit?.handle ?? null;
   const connection = hitTestConnection(point, state.connections, state.elements, context);
 
@@ -634,10 +869,6 @@ function cloneConnection(connection: Connection): Connection {
     source: { ...connection.source },
     target: { ...connection.target },
   };
-}
-
-function cloneSelection(selection: FlowSnapshot['selection']) {
-  return selection ? { ...selection } : null;
 }
 
 watch(
@@ -689,10 +920,19 @@ onBeforeUnmount(() => {
         <span aria-hidden="true">↷</span>
         Redo
       </button>
-      <button class="tool-action danger" type="button" :disabled="!state.selection" @click="deleteSelection">
+      <button class="tool-action danger" type="button" :disabled="selectedCount === 0" @click="deleteSelection">
         <span aria-hidden="true">×</span>
         Delete selected
       </button>
+      <div class="export-actions" aria-label="Image export">
+        <button class="tool-action" type="button" @click="copyImage">
+          Copy image
+        </button>
+        <button class="tool-action" type="button" @click="downloadImage">
+          Download image
+        </button>
+        <span v-if="exportStatus" class="export-status">{{ exportStatus }}</span>
+      </div>
       <button class="tool-action" type="button" @click="resetView">
         <span aria-hidden="true">⌖</span>
         Reset view
@@ -923,6 +1163,208 @@ onBeforeUnmount(() => {
           </label>
         </fieldset>
       </form>
+
+      <form v-else-if="showBatchElementForm" class="panel-form" @submit.prevent>
+        <fieldset>
+          <legend>Elements</legend>
+          <label>
+            Shape
+            <select
+              :value="batchElementValue('shape')"
+              @change="updateSelectedElements('shape', ($event.target as HTMLSelectElement).value as FlowElement['shape'])"
+            >
+              <option value=""></option>
+              <option value="rect">Rect</option>
+              <option value="rounded-rect">Rounded rect</option>
+              <option value="ellipse">Ellipse</option>
+              <option value="circle">Circle</option>
+            </select>
+          </label>
+          <label>
+            Size mode
+            <select
+              :value="batchElementValue('sizeMode')"
+              @change="updateSelectedElements('sizeMode', ($event.target as HTMLSelectElement).value as FlowElement['sizeMode'])"
+            >
+              <option value=""></option>
+              <option value="fixed">Fixed</option>
+              <option value="fit-content">Fit content</option>
+            </select>
+          </label>
+        </fieldset>
+
+        <fieldset>
+          <legend>Layout</legend>
+          <div class="field-row">
+            <label>
+              Width
+              <input
+                type="number"
+                min="48"
+                :disabled="batchElementValue('sizeMode') === 'fit-content'"
+                :value="batchElementValue('width')"
+                @input="updateSelectedElements('width', Number(($event.target as HTMLInputElement).value))"
+              />
+            </label>
+            <label>
+              Height
+              <input
+                type="number"
+                min="32"
+                :disabled="batchElementValue('sizeMode') === 'fit-content'"
+                :value="batchElementValue('height')"
+                @input="updateSelectedElements('height', Number(($event.target as HTMLInputElement).value))"
+              />
+            </label>
+          </div>
+          <div class="field-row">
+            <label>
+              Padding
+              <input
+                type="number"
+                min="0"
+                :value="batchElementValue('padding')"
+                @input="updateSelectedElements('padding', Number(($event.target as HTMLInputElement).value))"
+              />
+            </label>
+            <label>
+              Radius
+              <input
+                type="number"
+                min="0"
+                :value="batchElementValue('borderRadius')"
+                @input="updateSelectedElements('borderRadius', Number(($event.target as HTMLInputElement).value))"
+              />
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Style</legend>
+          <label>
+            Text align
+            <select
+              :value="batchElementValue('textAlign')"
+              @change="updateSelectedElements('textAlign', ($event.target as HTMLSelectElement).value as FlowElement['textAlign'])"
+            >
+              <option value=""></option>
+              <option value="left">Left</option>
+              <option value="center">Center</option>
+              <option value="right">Right</option>
+            </select>
+          </label>
+          <div class="field-row">
+            <label>
+              Fill
+              <input
+                type="text"
+                placeholder="#ffffff"
+                :value="batchElementValue('backgroundColor')"
+                @change="updateSelectedElementColor('backgroundColor', ($event.target as HTMLInputElement).value)"
+              />
+            </label>
+            <label>
+              Border
+              <input
+                type="text"
+                placeholder="#111111"
+                :value="batchElementValue('borderColor')"
+                @change="updateSelectedElementColor('borderColor', ($event.target as HTMLInputElement).value)"
+              />
+            </label>
+          </div>
+          <label>
+            Border width
+            <input
+              type="number"
+              min="0"
+              max="12"
+              :value="batchElementValue('borderWidth')"
+              @input="updateSelectedElements('borderWidth', Number(($event.target as HTMLInputElement).value))"
+            />
+          </label>
+        </fieldset>
+      </form>
+
+      <form v-else-if="showBatchConnectionForm" class="panel-form" @submit.prevent>
+        <fieldset>
+          <legend>Connections</legend>
+          <label>
+            Line type
+            <select
+              :value="batchConnectionValue('lineType')"
+              @change="updateSelectedConnections('lineType', ($event.target as HTMLSelectElement).value as Connection['lineType'])"
+            >
+              <option value=""></option>
+              <option value="solid">Solid</option>
+              <option value="dashed">Dashed</option>
+            </select>
+          </label>
+          <label>
+            Line width
+            <input
+              type="number"
+              min="1"
+              max="12"
+              :value="batchConnectionValue('lineWidth')"
+              @input="updateSelectedConnections('lineWidth', Number(($event.target as HTMLInputElement).value))"
+            />
+          </label>
+          <div class="field-row">
+            <label>
+              Dash
+              <input
+                type="number"
+                min="1"
+                :disabled="batchConnectionValue('lineType') === 'solid'"
+                :value="batchConnectionValue('dashLength')"
+                @input="updateSelectedConnections('dashLength', Number(($event.target as HTMLInputElement).value))"
+              />
+            </label>
+            <label>
+              Gap
+              <input
+                type="number"
+                min="1"
+                :disabled="batchConnectionValue('lineType') === 'solid'"
+                :value="batchConnectionValue('dashGap')"
+                @input="updateSelectedConnections('dashGap', Number(($event.target as HTMLInputElement).value))"
+              />
+            </label>
+          </div>
+          <label>
+            Arrow
+            <select
+              :value="batchConnectionValue('arrow')"
+              @change="updateSelectedConnections('arrow', ($event.target as HTMLSelectElement).value as Connection['arrow'])"
+            >
+              <option value=""></option>
+              <option value="none">None</option>
+              <option value="start">Start</option>
+              <option value="end">End</option>
+              <option value="both">Both</option>
+            </select>
+          </label>
+          <label>
+            Text position
+            <select
+              :value="batchConnectionValue('textPosition')"
+              @change="updateSelectedConnections('textPosition', ($event.target as HTMLSelectElement).value as Connection['textPosition'])"
+            >
+              <option value=""></option>
+              <option value="above">Above</option>
+              <option value="middle">Middle</option>
+              <option value="below">Below</option>
+            </select>
+          </label>
+        </fieldset>
+      </form>
+
+      <template v-else-if="hasMixedSelection"></template>
+
+      <div v-else-if="selectedCount > 1" class="empty-state">
+        {{ selectedCount }} items selected.
+      </div>
 
       <div v-else class="empty-state">
         Select an element or connection.

@@ -70,6 +70,7 @@ export interface Connection {
 export type Selection =
   | { type: 'element'; id: string }
   | { type: 'connection'; id: string }
+  | { type: 'multi'; items: Array<{ type: 'element' | 'connection'; id: string }> }
   | null;
 
 export interface AlignmentGuide {

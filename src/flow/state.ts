@@ -19,7 +19,7 @@ export function cloneSnapshot(snapshot: FlowSnapshot): FlowSnapshot {
       source: { ...connection.source },
       target: { ...connection.target },
     })),
-    selection: snapshot.selection ? { ...snapshot.selection } : null,
+    selection: cloneSelection(snapshot.selection),
   };
 }
 
@@ -29,26 +29,54 @@ export function deleteSelectionFromFlow(
   selection: Selection,
 ): Pick<FlowSnapshot, 'elements' | 'connections' | 'selection'> {
   if (!selection) return { elements, connections, selection };
-
-  if (selection.type === 'element') {
-    return {
-      elements: elements.filter((element) => element.id !== selection.id),
-      connections: connections.filter(
-        (connection) =>
-          connection.source.elementId !== selection.id &&
-          connection.target.elementId !== selection.id &&
-          connection.sourceElementId !== selection.id &&
-          connection.targetElementId !== selection.id,
-      ),
-      selection: null,
-    };
-  }
+  const items = getSelectionItems(selection);
+  const elementIds = new Set(items.filter((item) => item.type === 'element').map((item) => item.id));
+  const connectionIds = new Set(items.filter((item) => item.type === 'connection').map((item) => item.id));
 
   return {
-    elements,
-    connections: connections.filter((connection) => connection.id !== selection.id),
+    elements: elements.filter((element) => !elementIds.has(element.id)),
+    connections: connections.filter(
+      (connection) =>
+        !connectionIds.has(connection.id) &&
+        !elementIds.has(connection.source.elementId) &&
+        !elementIds.has(connection.target.elementId) &&
+        !elementIds.has(connection.sourceElementId ?? '') &&
+        !elementIds.has(connection.targetElementId ?? ''),
+    ),
     selection: null,
   };
+}
+
+export function getSelectionItems(selection: Selection): Array<{ type: 'element' | 'connection'; id: string }> {
+  if (!selection) return [];
+  if (selection.type === 'multi') return selection.items;
+  return [selection];
+}
+
+export function cloneSelection(selection: Selection): Selection {
+  if (!selection) return null;
+  if (selection.type === 'multi') {
+    return { type: 'multi', items: selection.items.map((item) => ({ ...item })) };
+  }
+  return { ...selection };
+}
+
+export function isSelected(selection: Selection, type: 'element' | 'connection', id: string): boolean {
+  return getSelectionItems(selection).some((item) => item.type === type && item.id === id);
+}
+
+export function toggleSelection(
+  selection: Selection,
+  item: { type: 'element' | 'connection'; id: string },
+): Selection {
+  const items = getSelectionItems(selection);
+  const exists = items.some((entry) => entry.type === item.type && entry.id === item.id);
+  const next = exists
+    ? items.filter((entry) => !(entry.type === item.type && entry.id === item.id))
+    : [...items, item];
+  if (next.length === 0) return null;
+  if (next.length === 1) return { ...next[0] };
+  return { type: 'multi', items: next };
 }
 
 export function pushHistory(history: HistoryState, snapshot: FlowSnapshot) {
