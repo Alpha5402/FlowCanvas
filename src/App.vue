@@ -765,6 +765,19 @@ function updateElement<K extends keyof FlowElement>(element: FlowElement, key: K
   draw();
 }
 
+function updateElementSizeMode(element: FlowElement, sizeMode: FlowElement['sizeMode']) {
+  if (element.sizeMode === sizeMode) return;
+  const context = canvasRef.value?.getContext('2d') ?? undefined;
+  const box = getElementBox(element, context);
+  recordHistory();
+  if (sizeMode === 'fixed') {
+    element.width = box.width;
+    element.height = box.height;
+  }
+  element.sizeMode = sizeMode;
+  draw();
+}
+
 function updateConnection<K extends keyof Connection>(connection: Connection, key: K, value: Connection[K]) {
   if (Object.is(connection[key], value)) return;
   recordHistory();
@@ -842,6 +855,27 @@ function updateSelectedConnectionNumber<K extends keyof Connection>(key: K, inpu
 function updateSelectedElementChoice<K extends keyof FlowElement>(key: K, input: HTMLSelectElement) {
   if (!input.value) return;
   updateSelectedElements(key, input.value as FlowElement[K]);
+}
+
+function updateSelectedElementSizeMode(input: HTMLSelectElement) {
+  if (!input.value) return;
+  const sizeMode = input.value as FlowElement['sizeMode'];
+  if (selectedElements.value.length === 0) return;
+  if (selectedElements.value.every((element) => element.sizeMode === sizeMode)) return;
+  const context = canvasRef.value?.getContext('2d') ?? undefined;
+  const measuredBoxes = new Map(selectedElements.value.map((element) => [element.id, getElementBox(element, context)]));
+  recordHistory();
+  for (const element of selectedElements.value) {
+    if (sizeMode === 'fixed' && element.sizeMode === 'fit-content') {
+      const box = measuredBoxes.get(element.id);
+      if (box) {
+        element.width = box.width;
+        element.height = box.height;
+      }
+    }
+    element.sizeMode = sizeMode;
+  }
+  draw();
 }
 
 function updateSelectedConnectionChoice<K extends keyof Connection>(key: K, input: HTMLSelectElement) {
@@ -1089,7 +1123,7 @@ onBeforeUnmount(() => {
             Size mode
             <select
               :value="selectedElement.sizeMode"
-              @change="updateElement(selectedElement, 'sizeMode', ($event.target as HTMLSelectElement).value as FlowElement['sizeMode'])"
+              @change="updateElementSizeMode(selectedElement, ($event.target as HTMLSelectElement).value as FlowElement['sizeMode'])"
             >
               <option value="fixed">Fixed</option>
               <option value="fit-content">Fit content</option>
@@ -1285,7 +1319,7 @@ onBeforeUnmount(() => {
             Size mode
             <select
               :value="batchElementValue('sizeMode')"
-              @change="updateSelectedElementChoice('sizeMode', $event.target as HTMLSelectElement)"
+              @change="updateSelectedElementSizeMode($event.target as HTMLSelectElement)"
             >
               <option value="" disabled></option>
               <option value="fixed">Fixed</option>
