@@ -440,7 +440,6 @@ function onPointerMove(event: PointerEvent) {
     const snapped = snapElement(moving, state.elements.filter((element) => !movingIds.has(element.id)), proposedX, proposedY, context);
     const deltaX = snapped.x - originalPrimary.x;
     const deltaY = snapped.y - originalPrimary.y;
-    const changed = deltaX !== 0 || deltaY !== 0;
     for (const original of drag.value.originals) {
       const element = state.elements.find((item) => item.id === original.id);
       if (!element) continue;
@@ -448,7 +447,7 @@ function onPointerMove(event: PointerEvent) {
       element.y = original.y + deltaY;
     }
     state.guides = snapped.guides;
-    if (changed) drag.value.moved = true;
+    if (hasElementPositionChanges(state.elements, drag.value.originals)) drag.value.moved = true;
     updateCursor('grabbing');
     draw();
     return;
