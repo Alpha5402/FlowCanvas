@@ -160,7 +160,7 @@ const connectionStartedAt = ref(0);
 const connectionStartPoint = ref<Point | null>(null);
 const canvasCursor = ref('default');
 const EXPORT_FONT = '14px Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-const CONNECTION_CREATION_MOVE_THRESHOLD = 10;
+const SIGNIFICANT_CONNECTION_DRAG_DISTANCE = 10;
 
 function snapshot(): FlowSnapshot {
   return {
@@ -411,7 +411,9 @@ function onPointerMove(event: PointerEvent) {
 
   if (state.mode === 'creating-connection' && state.previewConnection) {
     const target = hitTestElementAnchorOrEdge(point, state.elements, state.pendingConnectionSource?.elementId, context);
-    state.previewConnection.pointer = target ? point : snapPreviewPoint(state.previewConnection.source, point, state.viewport.zoom);
+    state.previewConnection.pointer = target
+      ? point
+      : snapPreviewPoint(state.previewConnection.source, point, state.viewport.zoom, state.elements, context);
     state.hoverAnchor = target ? { elementId: target.elementId, side: target.side } : null;
     state.previewConnection.target = target;
     state.hoverElementId = target?.elementId ?? null;
@@ -589,13 +591,13 @@ function onMouseDown(event: MouseEvent) {
 function connectionPointerMovedEnough(point: Point): boolean {
   const start = connectionStartPoint.value;
   if (!start) return false;
-  return hasSignificantPointerMovement(start, point, state.viewport.zoom, CONNECTION_CREATION_MOVE_THRESHOLD);
+  return hasSignificantPointerMovement(start, point, state.viewport.zoom, SIGNIFICANT_CONNECTION_DRAG_DISTANCE);
 }
 
 function getPreviewCreationPoint(point: Point): Point {
   const source = state.previewConnection?.source;
   if (!source) return point;
-  return snapPreviewPoint(source, point, state.viewport.zoom);
+  return snapPreviewPoint(source, point, state.viewport.zoom, state.elements, canvasRef.value?.getContext('2d') ?? undefined);
 }
 
 function completeConnectionCreation(point: Point, context?: CanvasRenderingContext2D) {

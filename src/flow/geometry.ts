@@ -223,18 +223,54 @@ export function createPreviewPath(sourceAnchor: Anchor, pointer: Point): Connect
   return createConnectionPath(sourceAnchor, targetAnchor);
 }
 
-export function snapPreviewPoint(sourceAnchor: Anchor, pointer: Point, zoom = 1): Point {
+export function snapPreviewPoint(
+  sourceAnchor: Anchor,
+  pointer: Point,
+  zoom = 1,
+  elements: FlowElement[] = [],
+  measurer?: Measurer,
+): Point {
   const snapped = { ...pointer };
   const dx = pointer.x - sourceAnchor.x;
   const dy = pointer.y - sourceAnchor.y;
   const snapDistance = PREVIEW_AXIS_SNAP_DISTANCE / Math.max(zoom, 0.01);
+  const verticalCandidates: PreviewSnapCandidate[] = [];
+  const horizontalCandidates: PreviewSnapCandidate[] = [];
+
+  function addVerticalSnap(position: number, priority: number) {
+    const diff = position - pointer.x;
+    if (Math.abs(diff) <= snapDistance) {
+      verticalCandidates.push({ diff, priority });
+    }
+  }
+
+  function addHorizontalSnap(position: number, priority: number) {
+    const diff = position - pointer.y;
+    if (Math.abs(diff) <= snapDistance) {
+      horizontalCandidates.push({ diff, priority });
+    }
+  }
 
   if (Math.abs(dy) <= snapDistance && Math.abs(dx) > Math.abs(dy)) {
-    snapped.y = sourceAnchor.y;
+    addHorizontalSnap(sourceAnchor.y, 1);
   }
   if (Math.abs(dx) <= snapDistance && Math.abs(dy) > Math.abs(dx)) {
-    snapped.x = sourceAnchor.x;
+    addVerticalSnap(sourceAnchor.x, 1);
   }
+
+  for (const element of elements) {
+    if (element.id === sourceAnchor.elementId) continue;
+    const anchors = boxAnchors(getElementBox(element, measurer));
+    addVerticalSnap(anchors.left, 0);
+    addVerticalSnap(anchors.centerX, 2);
+    addVerticalSnap(anchors.right, 0);
+    addHorizontalSnap(anchors.top, 0);
+    addHorizontalSnap(anchors.centerY, 2);
+    addHorizontalSnap(anchors.bottom, 0);
+  }
+
+  snapped.x += chooseSnapCandidate(verticalCandidates)?.diff ?? 0;
+  snapped.y += chooseSnapCandidate(horizontalCandidates)?.diff ?? 0;
 
   return snapped;
 }
@@ -343,6 +379,9 @@ type SnapCandidate = {
   guide: AlignmentGuide;
   priority: number;
 };
+
+type PreviewSnapCandidate = Pick<SnapCandidate, 'diff' | 'priority'>;
+type BaseSnapCandidate = Pick<SnapCandidate, 'diff' | 'priority'>;
 
 export function resizeElementBox(
   original: FlowElement,
@@ -537,10 +576,18 @@ function isCenterAnchor(key: string): boolean {
   return key === 'centerX' || key === 'centerY';
 }
 
-function shouldUseSnapCandidate(current: SnapCandidate | null, candidate: SnapCandidate): boolean {
+function shouldUseSnapCandidate<T extends BaseSnapCandidate>(current: T | null, candidate: T): boolean {
   if (!current) return true;
   if (candidate.priority !== current.priority) return candidate.priority > current.priority;
   return Math.abs(candidate.diff) < Math.abs(current.diff);
+}
+
+function chooseSnapCandidate<T extends BaseSnapCandidate>(candidates: T[]): T | null {
+  let best: T | null = null;
+  for (const candidate of candidates) {
+    if (shouldUseSnapCandidate(best, candidate)) best = candidate;
+  }
+  return best;
 }
 
 function cubicPoint(start: Point, control1: Point, control2: Point, end: Point, t: number): Point {

@@ -258,6 +258,26 @@ describe('geometry', () => {
     });
   });
 
+  it('snaps preview points to nearby element center axes', () => {
+    const source = getElementAnchors(baseElement, measurer).find((anchor) => anchor.side === 'right')!;
+    const target = { ...baseElement, id: 'target', x: 300, y: 200 };
+
+    expect(snapPreviewPoint(source, { x: 366, y: 236 }, 1, [baseElement, target], measurer)).toEqual({
+      x: 360,
+      y: 230,
+    });
+  });
+
+  it('prefers preview center axes over closer element edge axes', () => {
+    const source = getElementAnchors(baseElement, measurer).find((anchor) => anchor.side === 'right')!;
+    const target = { ...baseElement, id: 'target', x: 300, y: 200, height: 20 };
+
+    expect(snapPreviewPoint(source, { x: 366, y: 218 }, 1, [baseElement, target], measurer)).toEqual({
+      x: 360,
+      y: 210,
+    });
+  });
+
   it('keeps preview axis snapping stable in screen pixels while zoomed', () => {
     const source = getElementAnchors(baseElement, measurer).find((anchor) => anchor.side === 'right')!;
 
