@@ -31,6 +31,7 @@ import {
   getSharedValue,
   getSelectionItems,
   isSelected,
+  normalizeHexColorInput,
   normalizeConnectionNumber,
   normalizeElementNumber,
   pushHistory,
@@ -788,8 +789,9 @@ function updateSelectedConnections<K extends keyof Connection>(key: K, value: Co
 }
 
 function updateSelectedElementColor(key: 'backgroundColor' | 'borderColor', value: string) {
-  if (!/^#[0-9a-f]{6}$/i.test(value)) return;
-  updateSelectedElements(key, value);
+  const color = normalizeHexColorInput(value);
+  if (!color) return;
+  updateSelectedElements(key, color);
 }
 
 function updateSelectedElementNumber<K extends keyof FlowElement>(key: K, input: HTMLInputElement) {

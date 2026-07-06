@@ -10,6 +10,7 @@ import {
   getConnectionEndpoint,
   getSharedValue,
   isSelected,
+  normalizeHexColorInput,
   normalizeConnectionNumber,
   normalizeElementNumber,
   resolvePreviewTarget,
@@ -198,6 +199,12 @@ describe('state', () => {
     expect(normalizeConnectionNumber('lineWidth', 20)).toBe(12);
     expect(normalizeConnectionNumber('dashLength', 0)).toBe(1);
     expect(normalizeConnectionNumber('dashGap', -6)).toBe(1);
+  });
+
+  it('normalizes pasted hex color input before batch style changes', () => {
+    expect(normalizeHexColorInput('  #aBc123  ')).toBe('#aBc123');
+    expect(normalizeHexColorInput('aBc123')).toBeNull();
+    expect(normalizeHexColorInput('#123')).toBeNull();
   });
 
   it('preserves measured dimensions when switching fit-content elements to fixed', () => {

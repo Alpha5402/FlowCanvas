@@ -136,6 +136,11 @@ export function normalizeConnectionNumber(key: keyof Connection, value: number):
   return value;
 }
 
+export function normalizeHexColorInput(value: string): string | null {
+  const trimmed = value.trim();
+  return /^#[0-9a-f]{6}$/i.test(trimmed) ? trimmed : null;
+}
+
 export function toggleSelection(
   selection: Selection,
   item: { type: 'element' | 'connection'; id: string },
