@@ -410,12 +410,18 @@ function onPointerMove(event: PointerEvent) {
     const deltaX = point.x - resize.value.startPoint.x;
     const deltaY = point.y - resize.value.startPoint.y;
     const next = resizeElementBox(resize.value.base, resize.value.handle, deltaX, deltaY);
+    const changed =
+      element.x !== next.x ||
+      element.y !== next.y ||
+      element.width !== next.width ||
+      element.height !== next.height ||
+      element.sizeMode !== 'fixed';
     element.x = next.x;
     element.y = next.y;
     element.width = next.width;
     element.height = next.height;
     element.sizeMode = 'fixed';
-    resize.value.moved = true;
+    if (changed) resize.value.moved = true;
     updateCursor(cursorForResizeHandle(resize.value.handle));
     draw();
     return;
@@ -432,6 +438,7 @@ function onPointerMove(event: PointerEvent) {
     const snapped = snapElement(moving, state.elements.filter((element) => !movingIds.has(element.id)), proposedX, proposedY, context);
     const deltaX = snapped.x - originalPrimary.x;
     const deltaY = snapped.y - originalPrimary.y;
+    const changed = deltaX !== 0 || deltaY !== 0;
     for (const original of drag.value.originals) {
       const element = state.elements.find((item) => item.id === original.id);
       if (!element) continue;
@@ -439,7 +446,7 @@ function onPointerMove(event: PointerEvent) {
       element.y = original.y + deltaY;
     }
     state.guides = snapped.guides;
-    drag.value.moved = true;
+    if (changed) drag.value.moved = true;
     updateCursor('grabbing');
     draw();
     return;
