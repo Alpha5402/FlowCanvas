@@ -156,7 +156,12 @@ function drawElement(context: CanvasRenderingContext2D, element: FlowElement, se
       : element.textAlign === 'right'
         ? box.x + box.width - element.padding
         : box.x + box.width / 2;
-  context.fillText(element.text, textX, box.y + box.height / 2, Math.max(12, box.width - element.padding * 2));
+  const maxTextWidth = getElementTextMaxWidth(element, box.width);
+  if (maxTextWidth === undefined) {
+    context.fillText(element.text, textX, box.y + box.height / 2);
+  } else {
+    context.fillText(element.text, textX, box.y + box.height / 2, maxTextWidth);
+  }
 
   context.restore();
 }
@@ -169,6 +174,14 @@ export function getElementStrokeWidth(element: Pick<FlowElement, 'borderWidth'>,
 
 export function shouldFillElement(backgroundColor: string): boolean {
   return backgroundColor.trim().toLowerCase() !== 'transparent';
+}
+
+export function getElementTextMaxWidth(
+  element: Pick<FlowElement, 'sizeMode' | 'padding'>,
+  boxWidth: number,
+): number | undefined {
+  if (element.sizeMode === 'fit-content') return undefined;
+  return Math.max(12, boxWidth - element.padding * 2);
 }
 
 function drawConnection(

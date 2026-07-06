@@ -3,6 +3,7 @@ import {
   getConnectionStrokeWidth,
   getConnectionTextBackground,
   getElementStrokeWidth,
+  getElementTextMaxWidth,
   getRenderPixelRatio,
   shouldFillElement,
   shouldRenderConnection,
@@ -22,6 +23,12 @@ describe('render', () => {
     expect(shouldFillElement('transparent')).toBe(false);
     expect(shouldFillElement(' TRANSPARENT ')).toBe(false);
     expect(shouldFillElement('#ffffff')).toBe(true);
+  });
+
+  it('does not constrain fit-content text width so canvas will not squeeze glyphs', () => {
+    expect(getElementTextMaxWidth({ sizeMode: 'fit-content', padding: 12 }, 120)).toBeUndefined();
+    expect(getElementTextMaxWidth({ sizeMode: 'fixed', padding: 12 }, 120)).toBe(96);
+    expect(getElementTextMaxWidth({ sizeMode: 'fixed', padding: 20 }, 30)).toBe(12);
   });
 
   it('uses explicit render pixel ratios for high-resolution exports', () => {
