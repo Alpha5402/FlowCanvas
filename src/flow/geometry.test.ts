@@ -9,6 +9,7 @@ import {
   hasSignificantPointerMovement,
   inferTargetSide,
   measureFitContent,
+  pointInElement,
   resizeElementBox,
   snapElement,
   snapPreviewPoint,
@@ -79,6 +80,16 @@ describe('geometry', () => {
         expect.objectContaining({ side: 'left', x: 10, y: 50, normalVector: { x: -1, y: 0 } }),
       ]),
     );
+  });
+
+  it('hit-tests ellipse and circle elements by their visible shape', () => {
+    const ellipse: FlowElement = { ...baseElement, shape: 'ellipse', x: 0, y: 0, width: 120, height: 60 };
+    const circle: FlowElement = { ...baseElement, shape: 'circle', x: 0, y: 0, width: 140, height: 80 };
+
+    expect(pointInElement({ x: 60, y: 30 }, ellipse, measurer)).toBe(true);
+    expect(pointInElement({ x: 3, y: 3 }, ellipse, measurer)).toBe(false);
+    expect(pointInElement({ x: 70, y: 40 }, circle, measurer)).toBe(true);
+    expect(pointInElement({ x: 5, y: 40 }, circle, measurer)).toBe(false);
   });
 
   it('creates lead points before curving between anchors', () => {

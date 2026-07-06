@@ -362,7 +362,16 @@ export function getResizeHandles(element: FlowElement, measurer?: Measurer): Arr
 
 export function pointInElement(point: Point, element: FlowElement, measurer?: Measurer): boolean {
   const box = getElementBox(element, measurer);
-  return point.x >= box.x && point.x <= box.x + box.width && point.y >= box.y && point.y <= box.y + box.height;
+  const insideBox = point.x >= box.x && point.x <= box.x + box.width && point.y >= box.y && point.y <= box.y + box.height;
+  if (!insideBox) return false;
+  if (element.shape !== 'ellipse' && element.shape !== 'circle') return true;
+
+  const radiusX = element.shape === 'circle' ? Math.min(box.width, box.height) / 2 : box.width / 2;
+  const radiusY = element.shape === 'circle' ? radiusX : box.height / 2;
+  const centerX = box.x + box.width / 2;
+  const centerY = box.y + box.height / 2;
+
+  return ((point.x - centerX) / radiusX) ** 2 + ((point.y - centerY) / radiusY) ** 2 <= 1;
 }
 
 export function distanceToConnection(point: Point, path: ConnectionPath): number {
