@@ -90,16 +90,6 @@ const history = reactive<HistoryState>({
 });
 
 const selectedItems = computed(() => getSelectionItems(state.selection));
-const selectedElement = computed(() => {
-  const items = selectedItems.value;
-  if (items.length !== 1 || items[0].type !== 'element') return null;
-  return state.elements.find((element) => element.id === items[0].id) ?? null;
-});
-const selectedConnection = computed(() => {
-  const items = selectedItems.value;
-  if (items.length !== 1 || items[0].type !== 'connection') return null;
-  return state.connections.find((connection) => connection.id === items[0].id) ?? null;
-});
 const selectedElements = computed(() =>
   selectedItems.value
     .filter((item) => item.type === 'element')
@@ -112,6 +102,14 @@ const selectedConnections = computed(() =>
     .map((item) => state.connections.find((connection) => connection.id === item.id))
     .filter((connection): connection is Connection => Boolean(connection)),
 );
+const selectedElement = computed(() => {
+  if (selectedElements.value.length !== 1 || selectedConnections.value.length !== 0) return null;
+  return selectedElements.value[0];
+});
+const selectedConnection = computed(() => {
+  if (selectedConnections.value.length !== 1 || selectedElements.value.length !== 0) return null;
+  return selectedConnections.value[0];
+});
 const selectedCount = computed(() => selectedElements.value.length + selectedConnections.value.length);
 const hasMixedSelection = computed(() => selectedElements.value.length > 0 && selectedConnections.value.length > 0);
 const showBatchElementForm = computed(() => selectedElements.value.length > 1 && selectedConnections.value.length === 0);
