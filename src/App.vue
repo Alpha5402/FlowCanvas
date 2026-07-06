@@ -37,6 +37,7 @@ import {
   hasSignificantPanMovement,
   isInteractiveControlTag,
   isSelected,
+  normalizeFillColorInput,
   normalizeHexColorInput,
   normalizeConnectionNumber,
   normalizeElementNumber,
@@ -911,9 +912,14 @@ function updateElementNumber<K extends keyof FlowElement>(element: FlowElement, 
 }
 
 function updateElementColor(element: FlowElement, key: 'backgroundColor' | 'borderColor', value: string) {
-  if (element[key] === value) return;
+  const color = key === 'backgroundColor' ? normalizeFillColorInput(value) : normalizeHexColorInput(value);
+  if (!color) {
+    exportStatus.value = key === 'backgroundColor' ? 'Use transparent or a hex color' : 'Use a hex color like #111111 or 111';
+    return;
+  }
+  if (element[key] === color) return;
   ensureFieldEditHistory('element', element.id, key);
-  element[key] = value;
+  element[key] = color;
   draw();
 }
 
@@ -958,9 +964,9 @@ function updateSelectedConnections<K extends keyof Connection>(key: K, value: Co
 }
 
 function updateSelectedElementColor(key: 'backgroundColor' | 'borderColor', value: string) {
-  const color = normalizeHexColorInput(value);
+  const color = key === 'backgroundColor' ? normalizeFillColorInput(value) : normalizeHexColorInput(value);
   if (!color) {
-    exportStatus.value = 'Use a hex color like #ffffff or fff';
+    exportStatus.value = key === 'backgroundColor' ? 'Use transparent or a hex color' : 'Use a hex color like #111111 or 111';
     return;
   }
   clearExportStatus();
@@ -1330,11 +1336,12 @@ onBeforeUnmount(() => {
             <label>
               Fill
               <input
-                type="color"
+                type="text"
+                placeholder="transparent"
                 :value="selectedElement.backgroundColor"
                 @focus="beginFieldEdit('element', selectedElement.id, 'backgroundColor')"
                 @blur="endFieldEdit"
-                @input="updateElementColor(selectedElement, 'backgroundColor', ($event.target as HTMLInputElement).value)"
+                @change="updateElementColor(selectedElement, 'backgroundColor', ($event.target as HTMLInputElement).value)"
               />
             </label>
             <label>
@@ -1555,7 +1562,7 @@ onBeforeUnmount(() => {
               Fill
               <input
                 type="text"
-                placeholder="#ffffff"
+                placeholder="transparent"
                 :value="batchElementValue('backgroundColor')"
                 @change="updateSelectedElementColor('backgroundColor', ($event.target as HTMLInputElement).value)"
               />

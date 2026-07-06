@@ -173,6 +173,12 @@ export function normalizeHexColorInput(value: string): string | null {
   return /^[0-9a-f]{6}$/i.test(hex) ? `#${hex}` : null;
 }
 
+export function normalizeFillColorInput(value: string): string | null {
+  const trimmed = value.trim().toLowerCase();
+  if (trimmed === 'transparent' || trimmed === 'none') return 'transparent';
+  return normalizeHexColorInput(value);
+}
+
 export function toggleSelection(
   selection: Selection,
   item: { type: 'element' | 'connection'; id: string },

@@ -3,6 +3,7 @@ import {
   getConnectionStrokeWidth,
   getConnectionTextBackground,
   getElementStrokeWidth,
+  shouldFillElement,
   shouldDrawConnectionTextGap,
 } from './render';
 
@@ -13,6 +14,12 @@ describe('render', () => {
     expect(getElementStrokeWidth(element, false, false)).toBe(0);
     expect(getElementStrokeWidth(element, false, true)).toBe(1.5);
     expect(getElementStrokeWidth(element, true, false)).toBe(2);
+  });
+
+  it('skips element fills only for transparent fill state', () => {
+    expect(shouldFillElement('transparent')).toBe(false);
+    expect(shouldFillElement(' TRANSPARENT ')).toBe(false);
+    expect(shouldFillElement('#ffffff')).toBe(true);
   });
 
   it('keeps connection hover and focus strokes visibly emphasized', () => {

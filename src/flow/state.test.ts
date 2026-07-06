@@ -17,6 +17,7 @@ import {
   hasSignificantPanMovement,
   isInteractiveControlTag,
   isSelected,
+  normalizeFillColorInput,
   normalizeHexColorInput,
   normalizeConnectionNumber,
   normalizeElementNumber,
@@ -38,7 +39,7 @@ const element: FlowElement = {
   padding: 12,
   textAlign: 'center',
   borderRadius: 0,
-  backgroundColor: '#ffffff',
+  backgroundColor: 'transparent',
   borderColor: '#111111',
   borderWidth: 1,
 };
@@ -291,6 +292,13 @@ describe('state', () => {
     expect(normalizeHexColorInput('#123')).toBe('#112233');
     expect(normalizeHexColorInput('fff')).toBe('#ffffff');
     expect(normalizeHexColorInput('#12')).toBeNull();
+  });
+
+  it('normalizes transparent fill input before element style changes', () => {
+    expect(normalizeFillColorInput(' transparent ')).toBe('transparent');
+    expect(normalizeFillColorInput('none')).toBe('transparent');
+    expect(normalizeFillColorInput('#123')).toBe('#112233');
+    expect(normalizeFillColorInput('nope')).toBeNull();
   });
 
   it('preserves measured dimensions when switching fit-content elements to fixed', () => {

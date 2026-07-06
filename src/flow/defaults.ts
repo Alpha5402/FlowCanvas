@@ -18,7 +18,7 @@ export function createElement(x: number, y: number): FlowElement {
     padding: 14,
     textAlign: 'center',
     borderRadius: 0,
-    backgroundColor: '#ffffff',
+    backgroundColor: 'transparent',
     borderColor: '#111111',
     borderWidth: 1,
   };
