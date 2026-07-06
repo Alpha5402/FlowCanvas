@@ -5,6 +5,7 @@ import {
   findAnchor,
   getElementBox,
   getConnectionPath,
+  getTextOffset,
   inferTargetSide,
   resizeElementBox,
   snapElement,
@@ -30,7 +31,7 @@ import {
   type FlowSnapshot,
   type HistoryState,
 } from './flow/state';
-import type { Anchor, Connection, EditorState, FlowElement, Point, ResizeHandle, Selection } from './types/flow';
+import type { Anchor, Connection, EditorState, FlowElement, Point, ResizeHandle } from './types/flow';
 
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 const stageRef = ref<HTMLElement | null>(null);
@@ -129,6 +130,7 @@ const pan = ref<{
 const isSpacePressed = ref(false);
 const connectionStartedAt = ref(0);
 const canvasCursor = ref('default');
+const EXPORT_FONT = '14px Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
 
 function snapshot(): FlowSnapshot {
   return {
@@ -543,10 +545,6 @@ function resetView() {
   draw();
 }
 
-function getExportSelection(): Selection {
-  return selectedCount.value > 0 ? cloneSelection(state.selection) : null;
-}
-
 function getExportContent() {
   const selectionItems = selectedItems.value;
   const selectedElementIds = new Set(selectionItems.filter((item) => item.type === 'element').map((item) => item.id));
@@ -601,6 +599,17 @@ function getExportBounds(
     const path = getConnectionPath(connection, state.elements, measurer);
     if (!path) continue;
     for (const point of path.samplePoints) includePoint(point);
+    if (connection.text && measurer) {
+      measurer.save();
+      measurer.font = EXPORT_FONT;
+      const offset = getTextOffset(connection.textPosition, path.textAngle);
+      const textX = path.labelPoint.x + offset.x;
+      const textY = path.labelPoint.y + offset.y;
+      const metrics = measurer.measureText(connection.text);
+      includePoint({ x: textX - metrics.width / 2 - 8, y: textY - 10 });
+      includePoint({ x: textX + metrics.width / 2 + 8, y: textY + 10 });
+      measurer.restore();
+    }
   }
 
   if (!Number.isFinite(minX) || !Number.isFinite(minY) || !Number.isFinite(maxX) || !Number.isFinite(maxY)) {
@@ -635,7 +644,7 @@ function createExportCanvas() {
     exportCanvas,
     content.elements,
     content.connections,
-    getExportSelection(),
+    null,
     [],
     {
       x: padding - bounds.minX,
