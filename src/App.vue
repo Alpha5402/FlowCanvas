@@ -900,6 +900,7 @@ function updateElementNumber<K extends keyof FlowElement>(element: FlowElement, 
   const value = input.valueAsNumber;
   if (!Number.isFinite(value)) return;
   const next = normalizeElementNumber(key, value) as FlowElement[K];
+  if ((key === 'width' || key === 'height') && !canEditElementDimensions([element])) return;
   if (Object.is(element[key], next)) return;
   ensureFieldEditHistory('element', element.id, key as string);
   element[key] = next;

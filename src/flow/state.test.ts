@@ -133,6 +133,7 @@ describe('state', () => {
   it('allows batch dimension edits only when every selected element is fixed-size', () => {
     expect(canEditElementDimensions([])).toBe(false);
     expect(canEditElementDimensions([{ ...element, sizeMode: 'fixed' }])).toBe(true);
+    expect(canEditElementDimensions([{ ...element, sizeMode: 'fit-content' }])).toBe(false);
     expect(
       canEditElementDimensions([
         { ...element, id: 'a', sizeMode: 'fixed' },
