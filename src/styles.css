@@ -29,12 +29,11 @@ button {
 
 .app-shell {
   display: grid;
-  grid-template-columns: 240px minmax(520px, 1fr) 300px;
+  grid-template-columns: minmax(640px, 1fr) 320px;
   height: 100vh;
   overflow: hidden;
 }
 
-.toolbar,
 .inspector {
   display: flex;
   flex-direction: column;
@@ -45,31 +44,9 @@ button {
   border-style: solid;
 }
 
-.toolbar {
-  border-width: 0 1px 0 0;
-}
-
 .inspector {
   border-width: 0 0 0 1px;
   overflow-y: auto;
-}
-
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 10px;
-}
-
-.brand-mark {
-  display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 8px;
-  color: #ffffff;
-  background: #1d4ed8;
-  font-weight: 800;
 }
 
 h1,
@@ -87,13 +64,6 @@ h2 {
   font-size: 17px;
 }
 
-.brand p,
-.mode-label {
-  color: #64748b;
-  font-size: 13px;
-}
-
-.primary-action,
 .tool-action {
   display: flex;
   align-items: center;
@@ -108,42 +78,23 @@ h2 {
   font-weight: 700;
 }
 
-.primary-action {
-  color: #ffffff;
-  background: #2563eb;
-}
-
-.tool-action.active {
-  color: #ffffff;
-  background: #0f766e;
-}
-
-.tool-action.danger {
-  color: #991b1b;
-  background: #fee2e2;
-}
-
-.tool-action:disabled,
-.primary-action:disabled {
+.tool-action:disabled {
   color: #94a3b8;
   background: #eef2f7;
   cursor: not-allowed;
 }
 
-.mode-card {
+.inspector-header {
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  margin-top: auto;
-  padding: 12px;
-  border: 1px solid #d8dee9;
-  border-radius: 8px;
-  background: #f8fafc;
+  gap: 10px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #d8dee9;
 }
 
 .export-actions {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 8px;
 }
 

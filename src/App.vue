@@ -114,15 +114,6 @@ const selectedCount = computed(() => selectedElements.value.length + selectedCon
 const hasMixedSelection = computed(() => selectedElements.value.length > 0 && selectedConnections.value.length > 0);
 const showBatchElementForm = computed(() => selectedElements.value.length > 1 && selectedConnections.value.length === 0);
 const showBatchConnectionForm = computed(() => selectedConnections.value.length > 1 && selectedElements.value.length === 0);
-const selectionSummary = computed(() => {
-  const elementCount = selectedElements.value.length;
-  const connectionCount = selectedConnections.value.length;
-  if (elementCount === 0 && connectionCount === 0) return 'No selection';
-  const parts = [];
-  if (elementCount > 0) parts.push(`${elementCount} ${elementCount === 1 ? 'element' : 'elements'}`);
-  if (connectionCount > 0) parts.push(`${connectionCount} ${connectionCount === 1 ? 'connection' : 'connections'}`);
-  return parts.join(', ');
-});
 const exportStatus = ref('');
 const exportBusy = ref(false);
 const textEdit = ref<{ type: 'element' | 'connection'; id: string; hasHistory: boolean } | null>(null);
@@ -251,7 +242,7 @@ function screenToWorld(point: Point): Point {
   };
 }
 
-function addElement() {
+function addElementAtViewportCenter() {
   recordHistory();
   const stage = stageRef.value;
   const rect = stage?.getBoundingClientRect();
@@ -1044,6 +1035,18 @@ function onKeyDown(event: KeyboardEvent) {
     return;
   }
 
+  if (!isEditingField && !commandKey && state.mode === 'idle' && event.key.toLowerCase() === 'n') {
+    event.preventDefault();
+    addElementAtViewportCenter();
+    return;
+  }
+
+  if (!isEditingField && !commandKey && event.key === '0') {
+    event.preventDefault();
+    resetView();
+    return;
+  }
+
   if (!isEditingField && (event.key === 'Delete' || event.key === 'Backspace')) {
     event.preventDefault();
     deleteSelection();
@@ -1149,53 +1152,6 @@ onBeforeUnmount(() => {
 
 <template>
   <main class="app-shell">
-    <aside class="toolbar" aria-label="Flow tools">
-      <div class="brand">
-        <span class="brand-mark">FC</span>
-        <div>
-          <h1>FlowCanvas</h1>
-          <p>v2 editor</p>
-        </div>
-      </div>
-
-      <button class="primary-action" type="button" @click="addElement">
-        <span aria-hidden="true">+</span>
-        Add element
-      </button>
-      <button class="tool-action" type="button" :disabled="history.past.length === 0" @click="undoAction">
-        <span aria-hidden="true">↶</span>
-        Undo
-      </button>
-      <button class="tool-action" type="button" :disabled="history.future.length === 0" @click="redoAction">
-        <span aria-hidden="true">↷</span>
-        Redo
-      </button>
-      <button class="tool-action danger" type="button" :disabled="selectedCount === 0" @click="deleteSelection">
-        <span aria-hidden="true">×</span>
-        Delete selected
-      </button>
-      <div class="export-actions" aria-label="Image export" :aria-busy="exportBusy">
-        <button class="tool-action" type="button" :disabled="exportBusy" @click="copyImage">
-          Copy image
-        </button>
-        <button class="tool-action" type="button" :disabled="exportBusy" @click="downloadImage">
-          Download image
-        </button>
-        <span v-if="exportStatus" class="export-status" role="status" aria-live="polite">{{ exportStatus }}</span>
-      </div>
-      <button class="tool-action" type="button" @click="resetView">
-        <span aria-hidden="true">⌖</span>
-        Reset view
-      </button>
-
-      <div class="mode-card">
-        <span class="mode-label">Mode</span>
-        <strong>{{ state.mode === 'idle' ? 'Select, drag, connect' : state.mode }}</strong>
-        <span class="mode-label">{{ selectionSummary }}</span>
-        <span class="mode-label">{{ Math.round(state.viewport.zoom * 100) }}%</span>
-      </div>
-    </aside>
-
     <section ref="stageRef" class="stage">
       <canvas
         ref="canvasRef"
@@ -1210,6 +1166,19 @@ onBeforeUnmount(() => {
     </section>
 
     <aside class="inspector" aria-label="Properties">
+      <header class="inspector-header">
+        <h1>FlowCanvas</h1>
+        <div class="export-actions" aria-label="Image export" :aria-busy="exportBusy">
+          <button class="tool-action" type="button" :disabled="exportBusy" @click="copyImage">
+            Copy image
+          </button>
+          <button class="tool-action" type="button" :disabled="exportBusy" @click="downloadImage">
+            Download image
+          </button>
+        </div>
+        <span v-if="exportStatus" class="export-status" role="status" aria-live="polite">{{ exportStatus }}</span>
+      </header>
+
       <h2 v-if="!hasMixedSelection">Inspector</h2>
 
       <form v-if="selectedElement" class="panel-form" @submit.prevent>
