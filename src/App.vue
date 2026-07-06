@@ -114,6 +114,9 @@ const selectedCount = computed(() => selectedElements.value.length + selectedCon
 const hasMixedSelection = computed(() => selectedElements.value.length > 0 && selectedConnections.value.length > 0);
 const showBatchElementForm = computed(() => selectedElements.value.length > 1 && selectedConnections.value.length === 0);
 const showBatchConnectionForm = computed(() => selectedConnections.value.length > 1 && selectedElements.value.length === 0);
+const canEditSelectedElementDimensions = computed(
+  () => selectedElements.value.length > 0 && selectedElements.value.every((element) => element.sizeMode === 'fixed'),
+);
 const exportStatus = ref('');
 const exportBusy = ref(false);
 const textEdit = ref<{ type: 'element' | 'connection'; id: string; hasHistory: boolean } | null>(null);
@@ -964,6 +967,7 @@ function updateSelectedElementNumber<K extends keyof FlowElement>(key: K, input:
   if (!Number.isFinite(value)) return;
   const next = normalizeElementNumber(key, value) as FlowElement[K];
   if (selectedElements.value.length === 0) return;
+  if ((key === 'width' || key === 'height') && !canEditSelectedElementDimensions.value) return;
   if (selectedElements.value.every((element) => Object.is(element[key], next))) return;
   ensureFieldEditHistory('element', 'batch-elements', key as string);
   for (const element of selectedElements.value) {
@@ -1479,7 +1483,7 @@ onBeforeUnmount(() => {
               <input
                 type="number"
                 min="48"
-                :disabled="batchElementValue('sizeMode') === 'fit-content'"
+                :disabled="!canEditSelectedElementDimensions"
                 :value="batchElementValue('width')"
                 @focus="beginFieldEdit('element', 'batch-elements', 'width')"
                 @blur="endFieldEdit"
@@ -1491,7 +1495,7 @@ onBeforeUnmount(() => {
               <input
                 type="number"
                 min="32"
-                :disabled="batchElementValue('sizeMode') === 'fit-content'"
+                :disabled="!canEditSelectedElementDimensions"
                 :value="batchElementValue('height')"
                 @focus="beginFieldEdit('element', 'batch-elements', 'height')"
                 @blur="endFieldEdit"
