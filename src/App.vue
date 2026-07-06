@@ -747,6 +747,20 @@ function updateConnection<K extends keyof Connection>(connection: Connection, ke
   draw();
 }
 
+function updateElementNumber<K extends keyof FlowElement>(element: FlowElement, key: K, input: HTMLInputElement) {
+  if (input.value === '') return;
+  const value = input.valueAsNumber;
+  if (!Number.isFinite(value)) return;
+  updateElement(element, key, value as FlowElement[K]);
+}
+
+function updateConnectionNumber<K extends keyof Connection>(connection: Connection, key: K, input: HTMLInputElement) {
+  if (input.value === '') return;
+  const value = input.valueAsNumber;
+  if (!Number.isFinite(value)) return;
+  updateConnection(connection, key, value as Connection[K]);
+}
+
 function getSharedValue<T extends Record<string, unknown>, K extends keyof T>(items: T[], key: K): T[K] | '' {
   if (items.length === 0) return '';
   const first = items[0][key];
@@ -1062,7 +1076,7 @@ onBeforeUnmount(() => {
                 min="48"
                 :disabled="selectedElement.sizeMode === 'fit-content'"
                 :value="Math.round(getElementBox(selectedElement).width)"
-                @input="updateElement(selectedElement, 'width', Number(($event.target as HTMLInputElement).value))"
+                @input="updateElementNumber(selectedElement, 'width', $event.target as HTMLInputElement)"
               />
             </label>
             <label>
@@ -1072,7 +1086,7 @@ onBeforeUnmount(() => {
                 min="32"
                 :disabled="selectedElement.sizeMode === 'fit-content'"
                 :value="Math.round(getElementBox(selectedElement).height)"
-                @input="updateElement(selectedElement, 'height', Number(($event.target as HTMLInputElement).value))"
+                @input="updateElementNumber(selectedElement, 'height', $event.target as HTMLInputElement)"
               />
             </label>
           </div>
@@ -1083,7 +1097,7 @@ onBeforeUnmount(() => {
                 type="number"
                 min="0"
                 :value="selectedElement.padding"
-                @input="updateElement(selectedElement, 'padding', Number(($event.target as HTMLInputElement).value))"
+                @input="updateElementNumber(selectedElement, 'padding', $event.target as HTMLInputElement)"
               />
             </label>
             <label>
@@ -1092,7 +1106,7 @@ onBeforeUnmount(() => {
                 type="number"
                 min="0"
                 :value="selectedElement.borderRadius"
-                @input="updateElement(selectedElement, 'borderRadius', Number(($event.target as HTMLInputElement).value))"
+                @input="updateElementNumber(selectedElement, 'borderRadius', $event.target as HTMLInputElement)"
               />
             </label>
           </div>
@@ -1136,7 +1150,7 @@ onBeforeUnmount(() => {
               min="0"
               max="12"
               :value="selectedElement.borderWidth"
-              @input="updateElement(selectedElement, 'borderWidth', Number(($event.target as HTMLInputElement).value))"
+              @input="updateElementNumber(selectedElement, 'borderWidth', $event.target as HTMLInputElement)"
             />
           </label>
         </fieldset>
@@ -1169,7 +1183,7 @@ onBeforeUnmount(() => {
               min="1"
               max="12"
               :value="selectedConnection.lineWidth"
-              @input="updateConnection(selectedConnection, 'lineWidth', Number(($event.target as HTMLInputElement).value))"
+              @input="updateConnectionNumber(selectedConnection, 'lineWidth', $event.target as HTMLInputElement)"
             />
           </label>
           <div class="field-row">
@@ -1180,7 +1194,7 @@ onBeforeUnmount(() => {
                 min="1"
                 :disabled="selectedConnection.lineType === 'solid'"
                 :value="selectedConnection.dashLength"
-                @input="updateConnection(selectedConnection, 'dashLength', Number(($event.target as HTMLInputElement).value))"
+                @input="updateConnectionNumber(selectedConnection, 'dashLength', $event.target as HTMLInputElement)"
               />
             </label>
             <label>
@@ -1190,7 +1204,7 @@ onBeforeUnmount(() => {
                 min="1"
                 :disabled="selectedConnection.lineType === 'solid'"
                 :value="selectedConnection.dashGap"
-                @input="updateConnection(selectedConnection, 'dashGap', Number(($event.target as HTMLInputElement).value))"
+                @input="updateConnectionNumber(selectedConnection, 'dashGap', $event.target as HTMLInputElement)"
               />
             </label>
           </div>
