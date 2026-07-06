@@ -13,8 +13,7 @@ import {
 } from './flow/geometry';
 import {
   hitTestAnchorHandle,
-  hitTestConnection,
-  hitTestElement,
+  hitTestCanvasObject,
   hitTestElementAnchorOrEdge,
   hitTestResizeHandle,
   hitTestResizeHandleOnElements,
@@ -301,7 +300,8 @@ function onPointerDown(event: PointerEvent) {
     return;
   }
 
-  const element = hitTestElement(point, state.elements, context);
+  const bodyHit = hitTestCanvasObject(point, state.elements, state.connections, context);
+  const element = bodyHit?.type === 'element' ? bodyHit.item : null;
   const selected = selectedElement.value;
   const resizeHit = elementControlsHidden ? null : hitTestResizeHandleOnElements(point, state.elements, context);
   const resizeTarget = resizeHit?.element ?? element ?? selected;
@@ -326,7 +326,7 @@ function onPointerDown(event: PointerEvent) {
     return;
   }
 
-  const connection = hitTestConnection(point, state.connections, state.elements, context);
+  const connection = bodyHit?.type === 'connection' ? bodyHit.item : null;
   if (connection) {
     state.selection = multiSelect
       ? toggleSelection(state.selection, { type: 'connection', id: connection.id })
@@ -905,10 +905,11 @@ function refreshHover(point: Point) {
   const context = canvas?.getContext('2d') ?? undefined;
   const elementControlsHidden = shouldHideElementControls(state.selection);
   const anchor = elementControlsHidden ? null : hitTestAnchorHandle(point, state.elements, context);
-  const element = hitTestElement(point, state.elements, context);
   const resizeHit = elementControlsHidden ? null : hitTestResizeHandleOnElements(point, state.elements, context);
   const resizeHandle = resizeHit?.handle ?? null;
-  const connection = hitTestConnection(point, state.connections, state.elements, context);
+  const bodyHit = hitTestCanvasObject(point, state.elements, state.connections, context);
+  const element = bodyHit?.type === 'element' ? bodyHit.item : null;
+  const connection = bodyHit?.type === 'connection' ? bodyHit.item : null;
 
   state.hoverAnchor = anchor ? { elementId: anchor.elementId, side: anchor.side } : null;
   state.hoverResizeHandle = !anchor ? resizeHandle : null;

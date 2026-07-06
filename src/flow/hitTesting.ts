@@ -17,10 +17,27 @@ const EDGE_HIT_DISTANCE = 8;
 const RESIZE_HIT_RADIUS = 12;
 const CONNECTION_HIT_PADDING = 7.5;
 
+export type CanvasObjectHit =
+  | { type: 'element'; item: FlowElement }
+  | { type: 'connection'; item: Connection };
+
 export function hitTestElement(point: Point, elements: FlowElement[], measurer?: Measurer): FlowElement | null {
   for (let index = elements.length - 1; index >= 0; index -= 1) {
     if (pointInElement(point, elements[index], measurer)) return elements[index];
   }
+  return null;
+}
+
+export function hitTestCanvasObject(
+  point: Point,
+  elements: FlowElement[],
+  connections: Connection[],
+  measurer?: Measurer,
+): CanvasObjectHit | null {
+  const element = hitTestElement(point, elements, measurer);
+  if (element) return { type: 'element', item: element };
+  const connection = hitTestConnection(point, connections, elements, measurer);
+  if (connection) return { type: 'connection', item: connection };
   return null;
 }
 

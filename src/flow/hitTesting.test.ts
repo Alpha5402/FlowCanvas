@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Connection, FlowElement } from '../types/flow';
 import { getConnectionLabelBox, getConnectionPath } from './geometry';
-import { getConnectionHitDistance, hitTestConnection } from './hitTesting';
+import { getConnectionHitDistance, hitTestCanvasObject, hitTestConnection } from './hitTesting';
 
 const element: FlowElement = {
   id: 'a',
@@ -56,5 +56,16 @@ describe('hitTesting', () => {
         measurer,
       )?.id,
     ).toBe('c');
+  });
+
+  it('prioritizes elements over connections to match the render stack', () => {
+    const elements = [
+      element,
+      { ...element, id: 'b', x: 260, y: 0 },
+      { ...element, id: 'overlay', x: 145, y: 20, width: 90, height: 50 },
+    ];
+    const hit = hitTestCanvasObject({ x: 190, y: 45 }, elements, [{ ...connection, text: '' }], measurer);
+
+    expect(hit).toEqual({ type: 'element', item: expect.objectContaining({ id: 'overlay' }) });
   });
 });
