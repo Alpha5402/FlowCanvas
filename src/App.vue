@@ -124,6 +124,7 @@ const selectionSummary = computed(() => {
   return parts.join(', ');
 });
 const exportStatus = ref('');
+const exportBusy = ref(false);
 
 const drag = ref<{
   primaryId: string;
@@ -680,13 +681,15 @@ function canvasToPngBlob(canvas: HTMLCanvasElement) {
 }
 
 async function downloadImage() {
-  exportStatus.value = 'Preparing image...';
-  const exportCanvas = createExportCanvas();
-  if (!exportCanvas) {
-    exportStatus.value = 'Nothing to export';
-    return;
-  }
+  if (exportBusy.value) return;
+  exportBusy.value = true;
   try {
+    exportStatus.value = 'Preparing image...';
+    const exportCanvas = createExportCanvas();
+    if (!exportCanvas) {
+      exportStatus.value = 'Nothing to export';
+      return;
+    }
     const blob = await canvasToPngBlob(exportCanvas);
     const url = URL.createObjectURL(blob);
     try {
@@ -700,22 +703,28 @@ async function downloadImage() {
     exportStatus.value = 'Image downloaded';
   } catch {
     exportStatus.value = 'Download failed';
+  } finally {
+    exportBusy.value = false;
   }
 }
 
 async function copyImage() {
-  exportStatus.value = 'Preparing image...';
-  const exportCanvas = createExportCanvas();
-  if (!exportCanvas) {
-    exportStatus.value = 'Nothing to copy';
-    return;
-  }
+  if (exportBusy.value) return;
+  exportBusy.value = true;
   try {
+    exportStatus.value = 'Preparing image...';
+    const exportCanvas = createExportCanvas();
+    if (!exportCanvas) {
+      exportStatus.value = 'Nothing to copy';
+      return;
+    }
     const blob = await canvasToPngBlob(exportCanvas);
     await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
     exportStatus.value = 'Image copied';
   } catch {
     exportStatus.value = 'Copy is unavailable in this browser';
+  } finally {
+    exportBusy.value = false;
   }
 }
 
@@ -1038,11 +1047,11 @@ onBeforeUnmount(() => {
         <span aria-hidden="true">×</span>
         Delete selected
       </button>
-      <div class="export-actions" aria-label="Image export">
-        <button class="tool-action" type="button" @click="copyImage">
+      <div class="export-actions" aria-label="Image export" :aria-busy="exportBusy">
+        <button class="tool-action" type="button" :disabled="exportBusy" @click="copyImage">
           Copy image
         </button>
-        <button class="tool-action" type="button" @click="downloadImage">
+        <button class="tool-action" type="button" :disabled="exportBusy" @click="downloadImage">
           Download image
         </button>
         <span v-if="exportStatus" class="export-status" role="status" aria-live="polite">{{ exportStatus }}</span>
