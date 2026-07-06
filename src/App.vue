@@ -684,14 +684,18 @@ async function downloadImage() {
     exportStatus.value = 'Nothing to export';
     return;
   }
-  const blob = await canvasToPngBlob(exportCanvas);
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = selectedCount.value > 0 ? 'flowcanvas-selection.png' : 'flowcanvas-board.png';
-  link.click();
-  URL.revokeObjectURL(url);
-  exportStatus.value = 'Image downloaded';
+  try {
+    const blob = await canvasToPngBlob(exportCanvas);
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = selectedCount.value > 0 ? 'flowcanvas-selection.png' : 'flowcanvas-board.png';
+    link.click();
+    URL.revokeObjectURL(url);
+    exportStatus.value = 'Image downloaded';
+  } catch {
+    exportStatus.value = 'Download failed';
+  }
 }
 
 async function copyImage() {
