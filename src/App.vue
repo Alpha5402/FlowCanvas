@@ -479,6 +479,7 @@ function onPointerUp(event: PointerEvent) {
   const context = canvas?.getContext('2d') ?? undefined;
 
   if (state.mode === 'creating-connection' && state.pendingConnectionSource && state.previewConnection) {
+    if (!isPrimaryButtonEvent(event)) return;
     completeConnectionCreation(point, context);
     finishPointerInteraction(event.pointerId, point);
     return;
