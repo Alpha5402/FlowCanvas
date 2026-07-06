@@ -280,7 +280,7 @@ function onPointerDown(event: PointerEvent) {
     return;
   }
 
-  if (isSpacePressed.value || event.button === 1) {
+  if ((isSpacePressed.value && event.button === 0) || event.button === 1) {
     state.mode = 'panning-canvas';
     pan.value = {
       startPoint: screenPoint,
@@ -292,6 +292,8 @@ function onPointerDown(event: PointerEvent) {
     updateCursor('grabbing');
     return;
   }
+
+  if (event.button !== 0) return;
 
   const anchor = elementControlsHidden ? null : hitTestAnchorHandle(point, state.elements, context);
   if (anchor) {
