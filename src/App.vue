@@ -984,6 +984,7 @@ onMounted(() => {
   window.addEventListener('keyup', onKeyUp);
   window.addEventListener('blur', onWindowBlur);
   window.addEventListener('pointerup', onPointerUp);
+  window.addEventListener('pointercancel', onPointerUp);
   window.addEventListener('mousedown', onMouseDown);
   window.addEventListener('mouseup', onMouseUp);
 });
@@ -994,6 +995,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('keyup', onKeyUp);
   window.removeEventListener('blur', onWindowBlur);
   window.removeEventListener('pointerup', onPointerUp);
+  window.removeEventListener('pointercancel', onPointerUp);
   window.removeEventListener('mousedown', onMouseDown);
   window.removeEventListener('mouseup', onMouseUp);
 });
