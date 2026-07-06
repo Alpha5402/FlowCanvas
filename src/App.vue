@@ -633,6 +633,7 @@ function completeConnectionCreation(point: Point, context?: CanvasRenderingConte
 
 function onWheel(event: WheelEvent) {
   event.preventDefault();
+  clearExportStatus();
   const canvas = canvasRef.value;
   if (!canvas) return;
   const rect = canvas.getBoundingClientRect();
@@ -651,6 +652,7 @@ function onWheel(event: WheelEvent) {
 }
 
 function resetView() {
+  clearExportStatus();
   state.viewport.x = 0;
   state.viewport.y = 0;
   state.viewport.zoom = 1;
