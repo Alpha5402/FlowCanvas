@@ -82,6 +82,20 @@ describe('geometry', () => {
     );
   });
 
+  it('places circle anchors on the visible circle when the box is not square', () => {
+    const circle: FlowElement = { ...baseElement, shape: 'circle', x: 0, y: 0, width: 140, height: 80 };
+    const anchors = getElementAnchors(circle, measurer);
+
+    expect(anchors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ side: 'top', x: 70, y: 0 }),
+        expect.objectContaining({ side: 'right', x: 110, y: 40 }),
+        expect.objectContaining({ side: 'bottom', x: 70, y: 80 }),
+        expect.objectContaining({ side: 'left', x: 30, y: 40 }),
+      ]),
+    );
+  });
+
   it('hit-tests ellipse and circle elements by their visible shape', () => {
     const ellipse: FlowElement = { ...baseElement, shape: 'ellipse', x: 0, y: 0, width: 120, height: 60 };
     const circle: FlowElement = { ...baseElement, shape: 'circle', x: 0, y: 0, width: 140, height: 80 };

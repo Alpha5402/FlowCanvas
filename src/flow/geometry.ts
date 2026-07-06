@@ -102,11 +102,18 @@ export function getAnchorNormal(side: AnchorSide): Point {
 
 export function getElementAnchors(element: FlowElement, measurer?: Measurer): Anchor[] {
   const box = getElementBox(element, measurer);
+  const centerX = box.x + box.width / 2;
+  const centerY = box.y + box.height / 2;
+  const radius = Math.min(box.width, box.height) / 2;
+  const left = element.shape === 'circle' ? centerX - radius : box.x;
+  const right = element.shape === 'circle' ? centerX + radius : box.x + box.width;
+  const top = element.shape === 'circle' ? centerY - radius : box.y;
+  const bottom = element.shape === 'circle' ? centerY + radius : box.y + box.height;
   const anchors: Array<[AnchorSide, Point]> = [
-    ['top', { x: box.x + box.width / 2, y: box.y }],
-    ['right', { x: box.x + box.width, y: box.y + box.height / 2 }],
-    ['bottom', { x: box.x + box.width / 2, y: box.y + box.height }],
-    ['left', { x: box.x, y: box.y + box.height / 2 }],
+    ['top', { x: centerX, y: top }],
+    ['right', { x: right, y: centerY }],
+    ['bottom', { x: centerX, y: bottom }],
+    ['left', { x: left, y: centerY }],
   ];
 
   return anchors.map(([side, point]) => ({
