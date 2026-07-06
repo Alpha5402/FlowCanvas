@@ -60,6 +60,7 @@ describe('state', () => {
     expect(isInteractiveControlTag('SELECT')).toBe(true);
     expect(isInteractiveControlTag('TEXTAREA')).toBe(true);
     expect(isInteractiveControlTag('BUTTON')).toBe(true);
+    expect(isInteractiveControlTag('button')).toBe(true);
     expect(isInteractiveControlTag(undefined)).toBe(false);
   });
 

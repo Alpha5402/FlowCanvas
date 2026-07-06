@@ -14,7 +14,8 @@ export interface HistoryState {
 const PAN_MOVE_THRESHOLD = 3;
 
 export function isInteractiveControlTag(tagName: string | null | undefined): boolean {
-  return tagName === 'INPUT' || tagName === 'SELECT' || tagName === 'TEXTAREA' || tagName === 'BUTTON';
+  const normalized = tagName?.toUpperCase();
+  return normalized === 'INPUT' || normalized === 'SELECT' || normalized === 'TEXTAREA' || normalized === 'BUTTON';
 }
 
 export function cloneSnapshot(snapshot: FlowSnapshot): FlowSnapshot {
