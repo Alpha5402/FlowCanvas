@@ -293,7 +293,7 @@ function onPointerDown(event: PointerEvent) {
     state.previewConnection = { source: anchor, pointer: point, target: null };
     state.selection = { type: 'element', id: anchor.elementId };
     canvas.setPointerCapture(event.pointerId);
-    updateCursor('crosshair');
+    updateCursor('pointer');
     draw();
     return;
   }
@@ -396,7 +396,7 @@ function onPointerMove(event: PointerEvent) {
     state.hoverAnchor = target ? { elementId: target.elementId, side: target.side } : null;
     state.previewConnection.target = target;
     state.hoverElementId = target?.elementId ?? null;
-    updateCursor('crosshair');
+    updateCursor('pointer');
     draw();
     return;
   }
@@ -908,10 +908,10 @@ function refreshHover(point: Point) {
   state.hoverElementId = resizeHit?.element.id ?? (!anchor && !connection ? element?.id ?? null : anchor?.elementId ?? null);
 
   if (isSpacePressed.value) updateCursor('grab');
-  else if (anchor) updateCursor('crosshair');
+  else if (anchor) updateCursor('pointer');
   else if (resizeHandle) updateCursor(cursorForResizeHandle(resizeHandle));
   else if (connection) updateCursor('pointer');
-  else if (element) updateCursor('grab');
+  else if (element) updateCursor('pointer');
   else updateCursor('default');
 }
 
