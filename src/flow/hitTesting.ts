@@ -3,6 +3,7 @@ import {
   distance,
   distanceToConnection,
   getAnchorHandlePoint,
+  getConnectionLabelBox,
   getConnectionPath,
   getElementAnchors,
   getElementBox,
@@ -98,7 +99,10 @@ export function hitTestConnection(
 ): Connection | null {
   for (let index = connections.length - 1; index >= 0; index -= 1) {
     const path = getConnectionPath(connections[index], elements, measurer);
-    if (path && distanceToConnection(point, path) <= getConnectionHitDistance(connections[index])) return connections[index];
+    if (!path) continue;
+    const labelBox = getConnectionLabelBox(connections[index], path, measurer);
+    if (labelBox && pointInBox(point, labelBox)) return connections[index];
+    if (distanceToConnection(point, path) <= getConnectionHitDistance(connections[index])) return connections[index];
   }
   return null;
 }
@@ -127,4 +131,8 @@ function closestElementSide(point: Point, element: FlowElement, measurer?: Measu
     .sort((a, b) => a.distance - b.distance)[0];
 
   return closest?.side ?? null;
+}
+
+function pointInBox(point: Point, box: { x: number; y: number; width: number; height: number }): boolean {
+  return point.x >= box.x && point.x <= box.x + box.width && point.y >= box.y && point.y <= box.y + box.height;
 }

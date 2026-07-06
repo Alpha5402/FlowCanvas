@@ -52,6 +52,13 @@ export interface FlowBounds {
   maxY: number;
 }
 
+export interface TextBox {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 const FONT_SIZE = 14;
 const LINE_HEIGHT = 20;
 const SNAP_DISTANCE = 6;
@@ -438,13 +445,10 @@ export function getFlowBounds(
     const path = getConnectionPath(connection, elements, measurer);
     if (!path) continue;
     for (const point of path.samplePoints) includePoint(point);
-    if (connection.text && measurer) {
-      const offset = getTextOffset(connection.textPosition, path.textAngle);
-      const textX = path.labelPoint.x + offset.x;
-      const textY = path.labelPoint.y + offset.y;
-      const metrics = measurer.measureText(connection.text);
-      includePoint({ x: textX - metrics.width / 2 - 8, y: textY - 10 });
-      includePoint({ x: textX + metrics.width / 2 + 8, y: textY + 10 });
+    const labelBox = getConnectionLabelBox(connection, path, measurer);
+    if (labelBox) {
+      includePoint({ x: labelBox.x, y: labelBox.y });
+      includePoint({ x: labelBox.x + labelBox.width, y: labelBox.y + labelBox.height });
     }
   }
 
@@ -453,6 +457,24 @@ export function getFlowBounds(
   }
 
   return { minX, minY, maxX, maxY };
+}
+
+export function getConnectionLabelBox(
+  connection: Pick<Connection, 'text' | 'textPosition'>,
+  path: Pick<ConnectionPath, 'labelPoint' | 'textAngle'>,
+  measurer?: Measurer,
+): TextBox | null {
+  if (!connection.text || !measurer) return null;
+  const offset = getTextOffset(connection.textPosition, path.textAngle);
+  const textX = path.labelPoint.x + offset.x;
+  const textY = path.labelPoint.y + offset.y;
+  const metrics = measurer.measureText(connection.text);
+  return {
+    x: textX - metrics.width / 2 - 8,
+    y: textY - 10,
+    width: metrics.width + 16,
+    height: 20,
+  };
 }
 
 function sampleConnectionPath(

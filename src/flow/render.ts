@@ -14,11 +14,11 @@ import {
   createPreviewPath,
   getAnchorHandlePoint,
   getArrowAngle,
+  getConnectionLabelBox,
   getConnectionPath,
   getElementAnchors,
   getElementBox,
   getResizeHandles,
-  getTextOffset,
   type ConnectionPath,
   type Measurer,
 } from './geometry';
@@ -225,16 +225,16 @@ export function getConnectionTextBackground(showGrid: boolean): string {
 
 function drawConnectionText(context: CanvasRenderingContext2D, connection: Connection, path: ConnectionPath, backgroundColor: string) {
   if (!connection.text) return;
-  const offset = getTextOffset(connection.textPosition, path.textAngle);
-  const textX = path.labelPoint.x + offset.x;
-  const textY = path.labelPoint.y + offset.y;
-
   context.font = FONT;
-  const metrics = context.measureText(connection.text);
+  const labelBox = getConnectionLabelBox(connection, path, context);
+  if (!labelBox) return;
+  const textX = labelBox.x + labelBox.width / 2;
+  const textY = labelBox.y + labelBox.height / 2;
+
   context.textAlign = 'center';
   context.textBaseline = 'middle';
   context.fillStyle = backgroundColor;
-  context.fillRect(textX - metrics.width / 2 - 8, textY - 10, metrics.width + 16, 20);
+  context.fillRect(labelBox.x, labelBox.y, labelBox.width, labelBox.height);
   context.fillStyle = '#1f2937';
   context.fillText(connection.text, textX, textY);
 }

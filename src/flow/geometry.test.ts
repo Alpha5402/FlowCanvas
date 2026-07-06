@@ -4,9 +4,11 @@ import {
   createConnectionPath,
   distanceToConnection,
   getArrowAngle,
+  getConnectionLabelBox,
   getConnectionPath,
   getElementAnchors,
   getFlowBounds,
+  getTextOffset,
   hasSignificantPointerMovement,
   inferTargetSide,
   measureFitContent,
@@ -137,6 +139,22 @@ describe('geometry', () => {
     expect(path?.sourceAnchor.side).toBe('right');
     expect(path?.targetAnchor.side).toBe('left');
     expect(path?.samplePoints.length).toBeGreaterThan(10);
+  });
+
+  it('calculates connection label boxes from text position and measured text', () => {
+    const elements = [
+      { ...baseElement, id: 'a', x: 0, y: 0 },
+      { ...baseElement, id: 'b', x: 260, y: 160 },
+    ];
+    const labeledConnection = { ...connection(), text: 'Review', textPosition: 'above' as const };
+    const path = getConnectionPath(labeledConnection, elements, measurer)!;
+    const labelBox = getConnectionLabelBox(labeledConnection, path, measurer)!;
+    const offset = getTextOffset(labeledConnection.textPosition, path.textAngle);
+
+    expect(labelBox.width).toBe(64);
+    expect(labelBox.height).toBe(20);
+    expect(labelBox.x + labelBox.width / 2).toBeCloseTo(path.labelPoint.x + offset.x);
+    expect(labelBox.y + labelBox.height / 2).toBeCloseTo(path.labelPoint.y + offset.y);
   });
 
   it('calculates flow bounds from the provided export content', () => {
