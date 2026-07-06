@@ -287,7 +287,7 @@ export function snapElement(
     for (const movingKey of ['left', 'centerX', 'right'] as const) {
       for (const otherKey of ['left', 'centerX', 'right'] as const) {
         const diff = otherAnchors[otherKey] - movingAnchors[movingKey];
-        if (Math.abs(diff) < SNAP_DISTANCE) {
+        if (Math.abs(diff) <= SNAP_DISTANCE) {
           const guide = {
             orientation: 'vertical',
             position: otherAnchors[otherKey],
@@ -305,7 +305,7 @@ export function snapElement(
     for (const movingKey of ['top', 'centerY', 'bottom'] as const) {
       for (const otherKey of ['top', 'centerY', 'bottom'] as const) {
         const diff = otherAnchors[otherKey] - movingAnchors[movingKey];
-        if (Math.abs(diff) < SNAP_DISTANCE) {
+        if (Math.abs(diff) <= SNAP_DISTANCE) {
           const guide = {
             orientation: 'horizontal',
             position: otherAnchors[otherKey],

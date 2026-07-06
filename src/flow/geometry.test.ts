@@ -209,6 +209,16 @@ describe('geometry', () => {
     expect(result.guides.some((guide) => guide.orientation === 'vertical')).toBe(true);
   });
 
+  it('snaps moving elements at the exact alignment threshold', () => {
+    const moving = { ...baseElement, id: 'moving', x: 0, y: 0 };
+    const target = { ...baseElement, id: 'target', x: 200, y: 160 };
+
+    const result = snapElement(moving, [moving, target], 206, 60, measurer);
+
+    expect(result.x).toBe(200);
+    expect(result.guides.some((guide) => guide.orientation === 'vertical')).toBe(true);
+  });
+
   it('prefers center alignment guides when multiple snap rules match', () => {
     const moving = { ...baseElement, id: 'moving', x: 0, y: 0 };
     const target = { ...baseElement, id: 'target', x: 200, y: 160 };
