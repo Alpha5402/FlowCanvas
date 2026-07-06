@@ -918,6 +918,7 @@ function updateConnectionNumber<K extends keyof Connection>(connection: Connecti
   const value = input.valueAsNumber;
   if (!Number.isFinite(value)) return;
   const next = normalizeConnectionNumber(key, value) as Connection[K];
+  if ((key === 'dashLength' || key === 'dashGap') && !canEditConnectionDashPattern([connection])) return;
   if (Object.is(connection[key], next)) return;
   ensureFieldEditHistory('connection', connection.id, key as string);
   connection[key] = next;

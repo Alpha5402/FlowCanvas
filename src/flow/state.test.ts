@@ -143,6 +143,7 @@ describe('state', () => {
 
   it('allows batch dash edits only when every selected connection is dashed', () => {
     expect(canEditConnectionDashPattern([])).toBe(false);
+    expect(canEditConnectionDashPattern([{ ...connection, lineType: 'solid' }])).toBe(false);
     expect(canEditConnectionDashPattern([{ ...connection, lineType: 'dashed' }])).toBe(true);
     expect(
       canEditConnectionDashPattern([
