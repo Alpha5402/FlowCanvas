@@ -269,7 +269,6 @@ function isPrimaryButtonEvent(event: PointerEvent | MouseEvent) {
 }
 
 function onPointerDown(event: PointerEvent) {
-  clearExportStatus();
   const canvas = canvasRef.value;
   if (!canvas) return;
   const screenPoint = canvasPoint(event);
@@ -280,12 +279,14 @@ function onPointerDown(event: PointerEvent) {
 
   if (state.mode === 'creating-connection' && state.pendingConnectionSource && state.previewConnection) {
     if (!isPrimaryButtonEvent(event)) return;
+    clearExportStatus();
     completeConnectionCreation(point, context);
     finishPointerInteraction(undefined, point);
     return;
   }
 
   if ((isSpacePressed.value && isPrimaryButtonEvent(event)) || event.button === 1) {
+    clearExportStatus();
     state.mode = 'panning-canvas';
     pan.value = {
       startPoint: screenPoint,
@@ -299,6 +300,7 @@ function onPointerDown(event: PointerEvent) {
   }
 
   if (!isPrimaryButtonEvent(event)) return;
+  clearExportStatus();
 
   const anchor = elementControlsHidden ? null : hitTestAnchorHandle(point, state.elements, context);
   if (anchor) {
