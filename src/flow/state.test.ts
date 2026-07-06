@@ -193,6 +193,16 @@ describe('state', () => {
         ],
       }).connections.map((item) => item.id),
     ).toEqual(['bc']);
+    expect(getExportContent(elements, connections, { type: 'element', id: 'missing' })).toEqual({ elements, connections });
+    expect(
+      getExportContent(elements, connections, {
+        type: 'multi',
+        items: [
+          { type: 'element', id: 'missing' },
+          { type: 'connection', id: 'ab' },
+        ],
+      }).elements.map((item) => item.id),
+    ).toEqual(['a', 'b']);
   });
 
   it('resolves legacy connection endpoints for deletion and export content', () => {

@@ -65,9 +65,11 @@ export function getExportContent(
   selection: Selection,
 ): Pick<FlowSnapshot, 'elements' | 'connections'> {
   const selectionItems = getSelectionItems(selection);
-  const selectedElementIds = new Set(selectionItems.filter((item) => item.type === 'element').map((item) => item.id));
-  const selectedConnectionIds = new Set(selectionItems.filter((item) => item.type === 'connection').map((item) => item.id));
-  const hasSelection = selectionItems.length > 0;
+  const requestedElementIds = new Set(selectionItems.filter((item) => item.type === 'element').map((item) => item.id));
+  const requestedConnectionIds = new Set(selectionItems.filter((item) => item.type === 'connection').map((item) => item.id));
+  const selectedElementIds = new Set(elements.filter((element) => requestedElementIds.has(element.id)).map((element) => element.id));
+  const selectedConnectionIds = new Set(connections.filter((connection) => requestedConnectionIds.has(connection.id)).map((connection) => connection.id));
+  const hasSelection = selectedElementIds.size > 0 || selectedConnectionIds.size > 0;
 
   const exportConnections = hasSelection
     ? connections.filter(
