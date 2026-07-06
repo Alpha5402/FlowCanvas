@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { getConnectionStrokeWidth, getConnectionTextBackground, getElementStrokeWidth } from './render';
+import {
+  getConnectionStrokeWidth,
+  getConnectionTextBackground,
+  getElementStrokeWidth,
+  shouldDrawConnectionTextGap,
+} from './render';
 
 describe('render', () => {
   it('allows zero-width normal borders while keeping hover and focus outlines visible', () => {
@@ -22,5 +27,11 @@ describe('render', () => {
   it('matches connection text background to canvas export mode', () => {
     expect(getConnectionTextBackground(true)).toBe('#f5f7fb');
     expect(getConnectionTextBackground(false)).toBe('#ffffff');
+  });
+
+  it('only cuts a line gap for middle connection text', () => {
+    expect(shouldDrawConnectionTextGap('middle')).toBe(true);
+    expect(shouldDrawConnectionTextGap('above')).toBe(false);
+    expect(shouldDrawConnectionTextGap('below')).toBe(false);
   });
 });

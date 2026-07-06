@@ -222,6 +222,10 @@ export function getConnectionTextBackground(showGrid: boolean): string {
   return showGrid ? '#f5f7fb' : '#ffffff';
 }
 
+export function shouldDrawConnectionTextGap(position: Connection['textPosition']): boolean {
+  return position === 'middle';
+}
+
 function drawConnectionText(context: CanvasRenderingContext2D, connection: Connection, path: ConnectionPath, backgroundColor: string) {
   if (!connection.text) return;
   context.font = FONT;
@@ -232,8 +236,10 @@ function drawConnectionText(context: CanvasRenderingContext2D, connection: Conne
 
   context.textAlign = 'center';
   context.textBaseline = 'middle';
-  context.fillStyle = backgroundColor;
-  context.fillRect(labelBox.x, labelBox.y, labelBox.width, labelBox.height);
+  if (shouldDrawConnectionTextGap(connection.textPosition)) {
+    context.fillStyle = backgroundColor;
+    context.fillRect(labelBox.x, labelBox.y, labelBox.width, labelBox.height);
+  }
   context.fillStyle = '#1f2937';
   context.fillText(connection.text, textX, textY);
 }
