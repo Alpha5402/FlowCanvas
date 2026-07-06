@@ -250,8 +250,10 @@ describe('state', () => {
 
   it('normalizes pasted hex color input before batch style changes', () => {
     expect(normalizeHexColorInput('  #aBc123  ')).toBe('#aBc123');
-    expect(normalizeHexColorInput('aBc123')).toBeNull();
-    expect(normalizeHexColorInput('#123')).toBeNull();
+    expect(normalizeHexColorInput('aBc123')).toBe('#aBc123');
+    expect(normalizeHexColorInput('#123')).toBe('#112233');
+    expect(normalizeHexColorInput('fff')).toBe('#ffffff');
+    expect(normalizeHexColorInput('#12')).toBeNull();
   });
 
   it('preserves measured dimensions when switching fit-content elements to fixed', () => {

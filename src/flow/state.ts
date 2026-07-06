@@ -155,7 +155,11 @@ export function normalizeConnectionNumber(key: keyof Connection, value: number):
 
 export function normalizeHexColorInput(value: string): string | null {
   const trimmed = value.trim();
-  return /^#[0-9a-f]{6}$/i.test(trimmed) ? trimmed : null;
+  const hex = trimmed.startsWith('#') ? trimmed.slice(1) : trimmed;
+  if (/^[0-9a-f]{3}$/i.test(hex)) {
+    return `#${hex.split('').map((character) => `${character}${character}`).join('')}`;
+  }
+  return /^[0-9a-f]{6}$/i.test(hex) ? `#${hex}` : null;
 }
 
 export function toggleSelection(
