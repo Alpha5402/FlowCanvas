@@ -36,6 +36,7 @@ import {
   pushHistory,
   redo,
   restoreElementPositions,
+  resolvePreviewTarget,
   shouldHideElementControls,
   toggleSelection,
   undo,
@@ -547,7 +548,10 @@ function getPreviewCreationPoint(point: Point): Point {
 function completeConnectionCreation(point: Point, context?: CanvasRenderingContext2D) {
   if (!state.pendingConnectionSource || !connectionPointerMovedEnough(point)) return;
   const source = state.pendingConnectionSource;
-  const target = hitTestElementAnchorOrEdge(point, state.elements, source.elementId, context);
+  const target = resolvePreviewTarget(
+    hitTestElementAnchorOrEdge(point, state.elements, source.elementId, context),
+    state.previewConnection?.target ?? null,
+  );
   recordHistory();
   if (target) {
     const connection = createConnection(source.elementId, target.elementId, source.side, target.side);

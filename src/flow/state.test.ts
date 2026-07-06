@@ -12,6 +12,7 @@ import {
   isSelected,
   normalizeConnectionNumber,
   normalizeElementNumber,
+  resolvePreviewTarget,
   restoreElementPositions,
   shouldHideElementControls,
   toggleSelection,
@@ -124,6 +125,14 @@ describe('state', () => {
         ],
       }),
     ).toBe(true);
+  });
+
+  it('keeps the preview target when pointerup lands just outside the target hit area', () => {
+    const previewTarget = { elementId: 'element-b', side: 'left' as const, x: 120, y: 40, normalVector: { x: -1, y: 0 } };
+    const currentTarget = { elementId: 'element-c', side: 'top' as const, x: 200, y: 20, normalVector: { x: 0, y: -1 } };
+
+    expect(resolvePreviewTarget(null, previewTarget)).toBe(previewTarget);
+    expect(resolvePreviewTarget(currentTarget, previewTarget)).toBe(currentTarget);
   });
 
   it('resolves export content for board and selection exports', () => {

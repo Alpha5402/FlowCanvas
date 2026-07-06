@@ -1,4 +1,4 @@
-import type { Connection, ConnectionEndpoint, EditorState, FlowElement, Selection } from '../types/flow';
+import type { Anchor, Connection, ConnectionEndpoint, EditorState, FlowElement, Selection } from '../types/flow';
 
 export interface FlowSnapshot {
   elements: FlowElement[];
@@ -110,6 +110,10 @@ export function isSelected(selection: Selection, type: 'element' | 'connection',
 
 export function shouldHideElementControls(selection: Selection): boolean {
   return getSelectionItems(selection).length > 1;
+}
+
+export function resolvePreviewTarget(currentTarget: Anchor | null, previewTarget: Anchor | null): Anchor | null {
+  return currentTarget ?? previewTarget;
 }
 
 export function getSharedValue<T extends Record<string, unknown>, K extends keyof T>(items: T[], key: K): T[K] | '' {
