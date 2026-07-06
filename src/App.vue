@@ -687,11 +687,14 @@ async function downloadImage() {
   try {
     const blob = await canvasToPngBlob(exportCanvas);
     const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = selectedCount.value > 0 ? 'flowcanvas-selection.png' : 'flowcanvas-board.png';
-    link.click();
-    URL.revokeObjectURL(url);
+    try {
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = selectedCount.value > 0 ? 'flowcanvas-selection.png' : 'flowcanvas-board.png';
+      link.click();
+    } finally {
+      URL.revokeObjectURL(url);
+    }
     exportStatus.value = 'Image downloaded';
   } catch {
     exportStatus.value = 'Download failed';
