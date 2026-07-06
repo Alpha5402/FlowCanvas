@@ -1056,7 +1056,7 @@ function onKeyDown(event: KeyboardEvent) {
 function onKeyUp(event: KeyboardEvent) {
   if (event.code === 'Space') {
     isSpacePressed.value = false;
-    if (state.mode === 'idle') updateCursor('default');
+    if (state.mode === 'idle') updateCursorFromHoverState();
   }
 }
 
@@ -1103,6 +1103,12 @@ function clearHover() {
 
 function updateCursor(cursor: string) {
   canvasCursor.value = cursor;
+}
+
+function updateCursorFromHoverState() {
+  if (state.hoverResizeHandle) updateCursor(cursorForResizeHandle(state.hoverResizeHandle));
+  else if (state.hoverAnchor || state.hoverConnectionId || state.hoverElementId) updateCursor('pointer');
+  else updateCursor('default');
 }
 
 function cursorForResizeHandle(handle: ResizeHandle) {
