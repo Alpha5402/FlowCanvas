@@ -165,6 +165,24 @@ describe('state', () => {
         ],
       }).connections.map((item) => item.id),
     ).toEqual(['ab']);
+    expect(
+      getExportContent(elements, connections, {
+        type: 'multi',
+        items: [
+          { type: 'element', id: 'a' },
+          { type: 'connection', id: 'bc' },
+        ],
+      }).elements.map((item) => item.id),
+    ).toEqual(['a', 'b', 'c']);
+    expect(
+      getExportContent(elements, connections, {
+        type: 'multi',
+        items: [
+          { type: 'element', id: 'a' },
+          { type: 'connection', id: 'bc' },
+        ],
+      }).connections.map((item) => item.id),
+    ).toEqual(['bc']);
   });
 
   it('resolves legacy connection endpoints for deletion and export content', () => {
