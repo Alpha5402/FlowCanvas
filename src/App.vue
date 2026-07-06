@@ -300,6 +300,7 @@ function onPointerDown(event: PointerEvent) {
   const resizeTarget = resizeHit?.element ?? element ?? selected;
   const resizeHandle = resizeHit?.handle ?? hitTestResizeHandle(point, resizeTarget, context);
   if (resizeTarget && resizeHandle) {
+    const startSnapshot = snapshot();
     state.selection = { type: 'element', id: resizeTarget.id };
     const original = cloneElement(resizeTarget);
     const base = createFixedResizeBase(resizeTarget, getElementBox(resizeTarget, context));
@@ -309,7 +310,7 @@ function onPointerDown(event: PointerEvent) {
       startPoint: point,
       original,
       base,
-      startSnapshot: snapshot(),
+      startSnapshot,
       moved: false,
     };
     state.mode = 'resizing-element';
@@ -337,6 +338,7 @@ function onPointerDown(event: PointerEvent) {
     }
 
     const draggingSelection = selectedElements.value.length > 1 && isSelected(state.selection, 'element', element.id);
+    const startSnapshot = snapshot();
     if (!draggingSelection) state.selection = { type: 'element', id: element.id };
     const draggedElements = draggingSelection ? selectedElements.value : [element];
     const box = getElementBox(element, context);
@@ -346,7 +348,7 @@ function onPointerDown(event: PointerEvent) {
       offsetX: point.x - box.x,
       offsetY: point.y - box.y,
       originals: draggedElements.map((item) => ({ id: item.id, x: item.x, y: item.y })),
-      startSnapshot: snapshot(),
+      startSnapshot,
       moved: false,
     };
     state.mode = 'dragging-element';
