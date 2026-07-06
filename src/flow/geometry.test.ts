@@ -106,6 +106,14 @@ describe('geometry', () => {
     expect(pointInElement({ x: 5, y: 40 }, circle, measurer)).toBe(false);
   });
 
+  it('hit-tests rounded rectangles by their rounded visual corners', () => {
+    const rounded: FlowElement = { ...baseElement, shape: 'rounded-rect', x: 0, y: 0, width: 120, height: 60, borderRadius: 20 };
+
+    expect(pointInElement({ x: 60, y: 30 }, rounded, measurer)).toBe(true);
+    expect(pointInElement({ x: 12, y: 12 }, rounded, measurer)).toBe(true);
+    expect(pointInElement({ x: 3, y: 3 }, rounded, measurer)).toBe(false);
+  });
+
   it('creates lead points before curving between anchors', () => {
     const source = getElementAnchors(baseElement, measurer).find((anchor) => anchor.side === 'right')!;
     const target = getElementAnchors({ ...baseElement, id: 'b', x: 260 }, measurer).find((anchor) => anchor.side === 'left')!;

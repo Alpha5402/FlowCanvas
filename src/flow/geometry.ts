@@ -371,6 +371,7 @@ export function pointInElement(point: Point, element: FlowElement, measurer?: Me
   const box = getElementBox(element, measurer);
   const insideBox = point.x >= box.x && point.x <= box.x + box.width && point.y >= box.y && point.y <= box.y + box.height;
   if (!insideBox) return false;
+  if (element.shape === 'rounded-rect') return pointInRoundedRect(point, element, box);
   if (element.shape !== 'ellipse' && element.shape !== 'circle') return true;
 
   const radiusX = element.shape === 'circle' ? Math.min(box.width, box.height) / 2 : box.width / 2;
@@ -428,6 +429,21 @@ function boxAnchors(box: ElementBox) {
     centerY: box.y + box.height / 2,
     bottom: box.y + box.height,
   };
+}
+
+function pointInRoundedRect(point: Point, element: FlowElement, box: ElementBox): boolean {
+  const radius = Math.min(element.borderRadius, box.width / 2, box.height / 2);
+  if (radius <= 0) return true;
+
+  const innerLeft = box.x + radius;
+  const innerRight = box.x + box.width - radius;
+  const innerTop = box.y + radius;
+  const innerBottom = box.y + box.height - radius;
+
+  const cornerCenterX = point.x < innerLeft ? innerLeft : point.x > innerRight ? innerRight : point.x;
+  const cornerCenterY = point.y < innerTop ? innerTop : point.y > innerBottom ? innerBottom : point.y;
+
+  return distance(point, { x: cornerCenterX, y: cornerCenterY }) <= radius;
 }
 
 function centerPriority(first: string, second: string): number {
