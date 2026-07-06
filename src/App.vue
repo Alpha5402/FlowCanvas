@@ -1071,7 +1071,9 @@ function onKeyUp(event: KeyboardEvent) {
 function onWindowBlur() {
   isSpacePressed.value = false;
   if (state.mode === 'idle') {
+    clearHover();
     updateCursor('default');
+    draw();
     return;
   }
   cancelActiveInteraction();
