@@ -128,7 +128,7 @@ const selectionSummary = computed(() => {
 const exportStatus = ref('');
 const exportBusy = ref(false);
 const textEdit = ref<{ type: 'element' | 'connection'; id: string; hasHistory: boolean } | null>(null);
-const numberEdit = ref<{ type: 'element' | 'connection'; id: string; key: string; hasHistory: boolean } | null>(null);
+const fieldEdit = ref<{ type: 'element' | 'connection'; id: string; key: string; hasHistory: boolean } | null>(null);
 
 const drag = ref<{
   primaryId: string;
@@ -178,7 +178,7 @@ function applySnapshot(next: FlowSnapshot) {
   resize.value = null;
   pan.value = null;
   endTextEdit();
-  endNumberEdit();
+  endFieldEdit();
   state.elements = next.elements.map(cloneElement);
   state.connections = next.connections.map(cloneConnection);
   state.selection = cloneSelection(next.selection);
@@ -772,7 +772,7 @@ function finishPointerInteraction(pointerId?: number, hoverPoint?: Point) {
   resize.value = null;
   pan.value = null;
   endTextEdit();
-  endNumberEdit();
+  endFieldEdit();
   state.mode = 'idle';
   state.pendingConnectionSource = null;
   state.previewConnection = null;
@@ -832,19 +832,19 @@ function updateElementText(element: FlowElement, value: string) {
   draw();
 }
 
-function beginNumberEdit(type: 'element' | 'connection', id: string, key: string) {
-  numberEdit.value = { type, id, key, hasHistory: false };
+function beginFieldEdit(type: 'element' | 'connection', id: string, key: string) {
+  fieldEdit.value = { type, id, key, hasHistory: false };
 }
 
-function endNumberEdit() {
-  numberEdit.value = null;
+function endFieldEdit() {
+  fieldEdit.value = null;
 }
 
-function ensureNumberEditHistory(type: 'element' | 'connection', id: string, key: string) {
-  if (!numberEdit.value || numberEdit.value.type !== type || numberEdit.value.id !== id || numberEdit.value.key !== key) {
-    beginNumberEdit(type, id, key);
+function ensureFieldEditHistory(type: 'element' | 'connection', id: string, key: string) {
+  if (!fieldEdit.value || fieldEdit.value.type !== type || fieldEdit.value.id !== id || fieldEdit.value.key !== key) {
+    beginFieldEdit(type, id, key);
   }
-  const session = numberEdit.value;
+  const session = fieldEdit.value;
   if (!session || session.hasHistory) return;
   recordHistory();
   session.hasHistory = true;
@@ -879,8 +879,15 @@ function updateElementNumber<K extends keyof FlowElement>(element: FlowElement, 
   if (!Number.isFinite(value)) return;
   const next = normalizeElementNumber(key, value) as FlowElement[K];
   if (Object.is(element[key], next)) return;
-  ensureNumberEditHistory('element', element.id, key as string);
+  ensureFieldEditHistory('element', element.id, key as string);
   element[key] = next;
+  draw();
+}
+
+function updateElementColor(element: FlowElement, key: 'backgroundColor' | 'borderColor', value: string) {
+  if (element[key] === value) return;
+  ensureFieldEditHistory('element', element.id, key);
+  element[key] = value;
   draw();
 }
 
@@ -890,7 +897,7 @@ function updateConnectionNumber<K extends keyof Connection>(connection: Connecti
   if (!Number.isFinite(value)) return;
   const next = normalizeConnectionNumber(key, value) as Connection[K];
   if (Object.is(connection[key], next)) return;
-  ensureNumberEditHistory('connection', connection.id, key as string);
+  ensureFieldEditHistory('connection', connection.id, key as string);
   connection[key] = next;
   draw();
 }
@@ -940,7 +947,7 @@ function updateSelectedElementNumber<K extends keyof FlowElement>(key: K, input:
   const next = normalizeElementNumber(key, value) as FlowElement[K];
   if (selectedElements.value.length === 0) return;
   if (selectedElements.value.every((element) => Object.is(element[key], next))) return;
-  ensureNumberEditHistory('element', 'batch-elements', key as string);
+  ensureFieldEditHistory('element', 'batch-elements', key as string);
   for (const element of selectedElements.value) {
     element[key] = next;
   }
@@ -954,7 +961,7 @@ function updateSelectedConnectionNumber<K extends keyof Connection>(key: K, inpu
   const next = normalizeConnectionNumber(key, value) as Connection[K];
   if (selectedConnections.value.length === 0) return;
   if (selectedConnections.value.every((connection) => Object.is(connection[key], next))) return;
-  ensureNumberEditHistory('connection', 'batch-connections', key as string);
+  ensureFieldEditHistory('connection', 'batch-connections', key as string);
   for (const connection of selectedConnections.value) {
     connection[key] = next;
   }
@@ -1247,8 +1254,8 @@ onBeforeUnmount(() => {
                 min="48"
                 :disabled="selectedElement.sizeMode === 'fit-content'"
                 :value="Math.round(getElementBox(selectedElement).width)"
-                @focus="beginNumberEdit('element', selectedElement.id, 'width')"
-                @blur="endNumberEdit"
+                @focus="beginFieldEdit('element', selectedElement.id, 'width')"
+                @blur="endFieldEdit"
                 @input="updateElementNumber(selectedElement, 'width', $event.target as HTMLInputElement)"
               />
             </label>
@@ -1259,8 +1266,8 @@ onBeforeUnmount(() => {
                 min="32"
                 :disabled="selectedElement.sizeMode === 'fit-content'"
                 :value="Math.round(getElementBox(selectedElement).height)"
-                @focus="beginNumberEdit('element', selectedElement.id, 'height')"
-                @blur="endNumberEdit"
+                @focus="beginFieldEdit('element', selectedElement.id, 'height')"
+                @blur="endFieldEdit"
                 @input="updateElementNumber(selectedElement, 'height', $event.target as HTMLInputElement)"
               />
             </label>
@@ -1272,8 +1279,8 @@ onBeforeUnmount(() => {
                 type="number"
                 min="0"
                 :value="selectedElement.padding"
-                @focus="beginNumberEdit('element', selectedElement.id, 'padding')"
-                @blur="endNumberEdit"
+                @focus="beginFieldEdit('element', selectedElement.id, 'padding')"
+                @blur="endFieldEdit"
                 @input="updateElementNumber(selectedElement, 'padding', $event.target as HTMLInputElement)"
               />
             </label>
@@ -1283,8 +1290,8 @@ onBeforeUnmount(() => {
                 type="number"
                 min="0"
                 :value="selectedElement.borderRadius"
-                @focus="beginNumberEdit('element', selectedElement.id, 'borderRadius')"
-                @blur="endNumberEdit"
+                @focus="beginFieldEdit('element', selectedElement.id, 'borderRadius')"
+                @blur="endFieldEdit"
                 @input="updateElementNumber(selectedElement, 'borderRadius', $event.target as HTMLInputElement)"
               />
             </label>
@@ -1310,7 +1317,9 @@ onBeforeUnmount(() => {
               <input
                 type="color"
                 :value="selectedElement.backgroundColor"
-                @input="updateElement(selectedElement, 'backgroundColor', ($event.target as HTMLInputElement).value)"
+                @focus="beginFieldEdit('element', selectedElement.id, 'backgroundColor')"
+                @blur="endFieldEdit"
+                @input="updateElementColor(selectedElement, 'backgroundColor', ($event.target as HTMLInputElement).value)"
               />
             </label>
             <label>
@@ -1318,7 +1327,9 @@ onBeforeUnmount(() => {
               <input
                 type="color"
                 :value="selectedElement.borderColor"
-                @input="updateElement(selectedElement, 'borderColor', ($event.target as HTMLInputElement).value)"
+                @focus="beginFieldEdit('element', selectedElement.id, 'borderColor')"
+                @blur="endFieldEdit"
+                @input="updateElementColor(selectedElement, 'borderColor', ($event.target as HTMLInputElement).value)"
               />
             </label>
           </div>
@@ -1329,8 +1340,8 @@ onBeforeUnmount(() => {
               min="0"
               max="12"
               :value="selectedElement.borderWidth"
-              @focus="beginNumberEdit('element', selectedElement.id, 'borderWidth')"
-              @blur="endNumberEdit"
+              @focus="beginFieldEdit('element', selectedElement.id, 'borderWidth')"
+              @blur="endFieldEdit"
               @input="updateElementNumber(selectedElement, 'borderWidth', $event.target as HTMLInputElement)"
             />
           </label>
@@ -1366,8 +1377,8 @@ onBeforeUnmount(() => {
               min="1"
               max="12"
               :value="selectedConnection.lineWidth"
-              @focus="beginNumberEdit('connection', selectedConnection.id, 'lineWidth')"
-              @blur="endNumberEdit"
+              @focus="beginFieldEdit('connection', selectedConnection.id, 'lineWidth')"
+              @blur="endFieldEdit"
               @input="updateConnectionNumber(selectedConnection, 'lineWidth', $event.target as HTMLInputElement)"
             />
           </label>
@@ -1379,8 +1390,8 @@ onBeforeUnmount(() => {
                 min="1"
                 :disabled="selectedConnection.lineType === 'solid'"
                 :value="selectedConnection.dashLength"
-                @focus="beginNumberEdit('connection', selectedConnection.id, 'dashLength')"
-                @blur="endNumberEdit"
+                @focus="beginFieldEdit('connection', selectedConnection.id, 'dashLength')"
+                @blur="endFieldEdit"
                 @input="updateConnectionNumber(selectedConnection, 'dashLength', $event.target as HTMLInputElement)"
               />
             </label>
@@ -1391,8 +1402,8 @@ onBeforeUnmount(() => {
                 min="1"
                 :disabled="selectedConnection.lineType === 'solid'"
                 :value="selectedConnection.dashGap"
-                @focus="beginNumberEdit('connection', selectedConnection.id, 'dashGap')"
-                @blur="endNumberEdit"
+                @focus="beginFieldEdit('connection', selectedConnection.id, 'dashGap')"
+                @blur="endFieldEdit"
                 @input="updateConnectionNumber(selectedConnection, 'dashGap', $event.target as HTMLInputElement)"
               />
             </label>
@@ -1466,8 +1477,8 @@ onBeforeUnmount(() => {
                 min="48"
                 :disabled="batchElementValue('sizeMode') === 'fit-content'"
                 :value="batchElementValue('width')"
-                @focus="beginNumberEdit('element', 'batch-elements', 'width')"
-                @blur="endNumberEdit"
+                @focus="beginFieldEdit('element', 'batch-elements', 'width')"
+                @blur="endFieldEdit"
                 @input="updateSelectedElementNumber('width', $event.target as HTMLInputElement)"
               />
             </label>
@@ -1478,8 +1489,8 @@ onBeforeUnmount(() => {
                 min="32"
                 :disabled="batchElementValue('sizeMode') === 'fit-content'"
                 :value="batchElementValue('height')"
-                @focus="beginNumberEdit('element', 'batch-elements', 'height')"
-                @blur="endNumberEdit"
+                @focus="beginFieldEdit('element', 'batch-elements', 'height')"
+                @blur="endFieldEdit"
                 @input="updateSelectedElementNumber('height', $event.target as HTMLInputElement)"
               />
             </label>
@@ -1491,8 +1502,8 @@ onBeforeUnmount(() => {
                 type="number"
                 min="0"
                 :value="batchElementValue('padding')"
-                @focus="beginNumberEdit('element', 'batch-elements', 'padding')"
-                @blur="endNumberEdit"
+                @focus="beginFieldEdit('element', 'batch-elements', 'padding')"
+                @blur="endFieldEdit"
                 @input="updateSelectedElementNumber('padding', $event.target as HTMLInputElement)"
               />
             </label>
@@ -1502,8 +1513,8 @@ onBeforeUnmount(() => {
                 type="number"
                 min="0"
                 :value="batchElementValue('borderRadius')"
-                @focus="beginNumberEdit('element', 'batch-elements', 'borderRadius')"
-                @blur="endNumberEdit"
+                @focus="beginFieldEdit('element', 'batch-elements', 'borderRadius')"
+                @blur="endFieldEdit"
                 @input="updateSelectedElementNumber('borderRadius', $event.target as HTMLInputElement)"
               />
             </label>
@@ -1551,8 +1562,8 @@ onBeforeUnmount(() => {
               min="0"
               max="12"
               :value="batchElementValue('borderWidth')"
-              @focus="beginNumberEdit('element', 'batch-elements', 'borderWidth')"
-              @blur="endNumberEdit"
+              @focus="beginFieldEdit('element', 'batch-elements', 'borderWidth')"
+              @blur="endFieldEdit"
               @input="updateSelectedElementNumber('borderWidth', $event.target as HTMLInputElement)"
             />
           </label>
@@ -1584,8 +1595,8 @@ onBeforeUnmount(() => {
               min="1"
               max="12"
               :value="batchConnectionValue('lineWidth')"
-              @focus="beginNumberEdit('connection', 'batch-connections', 'lineWidth')"
-              @blur="endNumberEdit"
+              @focus="beginFieldEdit('connection', 'batch-connections', 'lineWidth')"
+              @blur="endFieldEdit"
               @input="updateSelectedConnectionNumber('lineWidth', $event.target as HTMLInputElement)"
             />
           </label>
@@ -1597,8 +1608,8 @@ onBeforeUnmount(() => {
                 min="1"
                 :disabled="batchConnectionValue('lineType') === 'solid'"
                 :value="batchConnectionValue('dashLength')"
-                @focus="beginNumberEdit('connection', 'batch-connections', 'dashLength')"
-                @blur="endNumberEdit"
+                @focus="beginFieldEdit('connection', 'batch-connections', 'dashLength')"
+                @blur="endFieldEdit"
                 @input="updateSelectedConnectionNumber('dashLength', $event.target as HTMLInputElement)"
               />
             </label>
@@ -1609,8 +1620,8 @@ onBeforeUnmount(() => {
                 min="1"
                 :disabled="batchConnectionValue('lineType') === 'solid'"
                 :value="batchConnectionValue('dashGap')"
-                @focus="beginNumberEdit('connection', 'batch-connections', 'dashGap')"
-                @blur="endNumberEdit"
+                @focus="beginFieldEdit('connection', 'batch-connections', 'dashGap')"
+                @blur="endFieldEdit"
                 @input="updateSelectedConnectionNumber('dashGap', $event.target as HTMLInputElement)"
               />
             </label>
