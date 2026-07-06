@@ -53,11 +53,12 @@ export function renderFlow(
   const measurer: Measurer = context;
   const selectedElementCount = getSelectionItems(selection).filter((item) => item.type === 'element').length;
   const elementControlsHidden = selectedElementCount > 1;
+  const labelBackgroundColor = getConnectionTextBackground(options.showGrid ?? true);
 
   connections.forEach((connection) => {
     const selected = isSelected(selection, 'connection', connection.id);
     const hovered = options.hoverConnectionId === connection.id;
-    drawConnection(context, connection, elements, selected, hovered, measurer);
+    drawConnection(context, connection, elements, selected, hovered, measurer, labelBackgroundColor);
   });
 
   if (options.previewConnection) {
@@ -157,6 +158,7 @@ function drawConnection(
   selected: boolean,
   hovered: boolean,
   measurer: Measurer,
+  labelBackgroundColor: string,
 ) {
   const path = getConnectionPath(connection, elements, measurer);
   if (!path) return;
@@ -175,7 +177,7 @@ function drawConnection(
   if (connection.arrow === 'end' || connection.arrow === 'both') {
     drawArrow(context, path.targetAnchor.x, path.targetAnchor.y, getArrowAngle(path, 'end'));
   }
-  drawConnectionText(context, connection, path);
+  drawConnectionText(context, connection, path, labelBackgroundColor);
   context.restore();
 }
 
@@ -217,7 +219,11 @@ function drawConnectionPath(context: CanvasRenderingContext2D, path: ConnectionP
   context.stroke();
 }
 
-function drawConnectionText(context: CanvasRenderingContext2D, connection: Connection, path: ConnectionPath) {
+export function getConnectionTextBackground(showGrid: boolean): string {
+  return showGrid ? '#f5f7fb' : '#ffffff';
+}
+
+function drawConnectionText(context: CanvasRenderingContext2D, connection: Connection, path: ConnectionPath, backgroundColor: string) {
   if (!connection.text) return;
   const offset = getTextOffset(connection.textPosition, path.textAngle);
   const textX = path.labelPoint.x + offset.x;
@@ -227,7 +233,7 @@ function drawConnectionText(context: CanvasRenderingContext2D, connection: Conne
   const metrics = context.measureText(connection.text);
   context.textAlign = 'center';
   context.textBaseline = 'middle';
-  context.fillStyle = '#f5f7fb';
+  context.fillStyle = backgroundColor;
   context.fillRect(textX - metrics.width / 2 - 8, textY - 10, metrics.width + 16, 20);
   context.fillStyle = '#1f2937';
   context.fillText(connection.text, textX, textY);

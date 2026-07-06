@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getConnectionStrokeWidth, getElementStrokeWidth } from './render';
+import { getConnectionStrokeWidth, getConnectionTextBackground, getElementStrokeWidth } from './render';
 
 describe('render', () => {
   it('allows zero-width normal borders while keeping hover and focus outlines visible', () => {
@@ -17,5 +17,10 @@ describe('render', () => {
     expect(getConnectionStrokeWidth(connection, false, true)).toBe(3.5);
     expect(getConnectionStrokeWidth(connection, true, false)).toBe(3.5);
     expect(getConnectionStrokeWidth({ lineWidth: 0 }, false, false)).toBe(1);
+  });
+
+  it('matches connection text background to canvas export mode', () => {
+    expect(getConnectionTextBackground(true)).toBe('#f5f7fb');
+    expect(getConnectionTextBackground(false)).toBe('#ffffff');
   });
 });
