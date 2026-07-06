@@ -959,6 +959,11 @@ function onKeyDown(event: KeyboardEvent) {
     if (state.mode === 'dragging-element' && drag.value) {
       restoreElementPositions(state.elements, drag.value.originals);
     }
+    if (state.mode === 'panning-canvas' && pan.value) {
+      state.viewport.x = pan.value.startViewport.x;
+      state.viewport.y = pan.value.startViewport.y;
+      state.viewport.zoom = pan.value.startViewport.zoom;
+    }
     if (state.mode === 'idle') {
       state.selection = null;
     }
