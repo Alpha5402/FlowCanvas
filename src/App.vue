@@ -29,6 +29,8 @@ import {
   getExportContent,
   getSharedValue,
   getSelectionItems,
+  hasElementGeometryChanged,
+  hasElementPositionChanges,
   isSelected,
   normalizeHexColorInput,
   normalizeConnectionNumber,
@@ -468,13 +470,18 @@ function onPointerUp(event: PointerEvent) {
   }
 
   if (state.mode === 'resizing-element' && resize.value) {
-    if (resize.value.moved) pushHistory(history, resize.value.startSnapshot);
+    const element = state.elements.find((item) => item.id === resize.value?.id);
+    if (resize.value.moved && element && hasElementGeometryChanged(element, resize.value.original)) {
+      pushHistory(history, resize.value.startSnapshot);
+    }
     finishPointerInteraction(event.pointerId, point);
     return;
   }
 
   if (state.mode === 'dragging-element' && drag.value) {
-    if (drag.value.moved) pushHistory(history, drag.value.startSnapshot);
+    if (drag.value.moved && hasElementPositionChanges(state.elements, drag.value.originals)) {
+      pushHistory(history, drag.value.startSnapshot);
+    }
     finishPointerInteraction(event.pointerId, point);
     return;
   }
@@ -507,13 +514,18 @@ function onMouseUp(event: MouseEvent) {
   }
 
   if (state.mode === 'resizing-element' && resize.value) {
-    if (resize.value.moved) pushHistory(history, resize.value.startSnapshot);
+    const element = state.elements.find((item) => item.id === resize.value?.id);
+    if (resize.value.moved && element && hasElementGeometryChanged(element, resize.value.original)) {
+      pushHistory(history, resize.value.startSnapshot);
+    }
     finishPointerInteraction(undefined, point);
     return;
   }
 
   if (state.mode === 'dragging-element' && drag.value) {
-    if (drag.value.moved) pushHistory(history, drag.value.startSnapshot);
+    if (drag.value.moved && hasElementPositionChanges(state.elements, drag.value.originals)) {
+      pushHistory(history, drag.value.startSnapshot);
+    }
     finishPointerInteraction(undefined, point);
     return;
   }

@@ -9,6 +9,8 @@ import {
   getExportContent,
   getConnectionEndpoint,
   getSharedValue,
+  hasElementGeometryChanged,
+  hasElementPositionChanges,
   isSelected,
   normalizeHexColorInput,
   normalizeConnectionNumber,
@@ -250,6 +252,29 @@ describe('state', () => {
       { id: 'b', x: 20, y: 30 },
       { id: 'c', x: 300, y: 310 },
     ]);
+  });
+
+  it('detects whether dragged elements actually ended at changed positions', () => {
+    const elements = [
+      { ...element, id: 'a', x: 0, y: 10 },
+      { ...element, id: 'b', x: 20, y: 30 },
+    ];
+    const originals = [
+      { id: 'a', x: 0, y: 10 },
+      { id: 'b', x: 20, y: 30 },
+    ];
+
+    expect(hasElementPositionChanges(elements, originals)).toBe(false);
+
+    elements[1].y = 31;
+
+    expect(hasElementPositionChanges(elements, originals)).toBe(true);
+  });
+
+  it('detects whether a resized element actually ended with changed geometry', () => {
+    expect(hasElementGeometryChanged(element, { ...element })).toBe(false);
+    expect(hasElementGeometryChanged({ ...element, width: element.width + 1 }, element)).toBe(true);
+    expect(hasElementGeometryChanged({ ...element, sizeMode: 'fit-content' }, element)).toBe(true);
   });
 
   it('clears every hover state after an interaction finishes', () => {

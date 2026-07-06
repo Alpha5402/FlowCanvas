@@ -190,6 +190,26 @@ export function restoreElementPositions(
   }
 }
 
+export function hasElementPositionChanges(
+  elements: FlowElement[],
+  originals: Array<Pick<FlowElement, 'id' | 'x' | 'y'>>,
+): boolean {
+  return originals.some((original) => {
+    const element = elements.find((item) => item.id === original.id);
+    return Boolean(element && (element.x !== original.x || element.y !== original.y));
+  });
+}
+
+export function hasElementGeometryChanged(element: FlowElement, original: FlowElement): boolean {
+  return (
+    element.x !== original.x ||
+    element.y !== original.y ||
+    element.width !== original.width ||
+    element.height !== original.height ||
+    element.sizeMode !== original.sizeMode
+  );
+}
+
 export function clearHoverState(
   state: Pick<EditorState, 'hoverElementId' | 'hoverConnectionId' | 'hoverAnchor' | 'hoverResizeHandle'>,
 ) {
