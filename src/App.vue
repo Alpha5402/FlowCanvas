@@ -270,7 +270,7 @@ function onPointerDown(event: PointerEvent) {
 
   if (state.mode === 'creating-connection' && state.pendingConnectionSource && state.previewConnection) {
     completeConnectionCreation(point, context);
-    finishPointerInteraction();
+    finishPointerInteraction(undefined, point);
     return;
   }
 
@@ -455,19 +455,19 @@ function onPointerUp(event: PointerEvent) {
 
   if (state.mode === 'creating-connection' && state.pendingConnectionSource && state.previewConnection) {
     completeConnectionCreation(point, context);
-    finishPointerInteraction(event.pointerId);
+    finishPointerInteraction(event.pointerId, point);
     return;
   }
 
   if (state.mode === 'resizing-element' && resize.value) {
     if (resize.value.moved) pushHistory(history, resize.value.startSnapshot);
-    finishPointerInteraction(event.pointerId);
+    finishPointerInteraction(event.pointerId, point);
     return;
   }
 
   if (state.mode === 'dragging-element' && drag.value) {
     if (drag.value.moved) pushHistory(history, drag.value.startSnapshot);
-    finishPointerInteraction(event.pointerId);
+    finishPointerInteraction(event.pointerId, point);
     return;
   }
 
@@ -475,11 +475,11 @@ function onPointerUp(event: PointerEvent) {
     if (!pan.value.preserveSelection && !pan.value.moved) {
       state.selection = null;
     }
-    finishPointerInteraction(event.pointerId);
+    finishPointerInteraction(event.pointerId, point);
     return;
   }
 
-  finishPointerInteraction(event.pointerId);
+  finishPointerInteraction(event.pointerId, point);
 }
 
 function onMouseUp(event: MouseEvent) {
@@ -494,19 +494,19 @@ function onMouseUp(event: MouseEvent) {
 
   if (state.mode === 'creating-connection' && state.pendingConnectionSource && state.previewConnection) {
     completeConnectionCreation(point, context);
-    finishPointerInteraction();
+    finishPointerInteraction(undefined, point);
     return;
   }
 
   if (state.mode === 'resizing-element' && resize.value) {
     if (resize.value.moved) pushHistory(history, resize.value.startSnapshot);
-    finishPointerInteraction();
+    finishPointerInteraction(undefined, point);
     return;
   }
 
   if (state.mode === 'dragging-element' && drag.value) {
     if (drag.value.moved) pushHistory(history, drag.value.startSnapshot);
-    finishPointerInteraction();
+    finishPointerInteraction(undefined, point);
     return;
   }
 
@@ -514,7 +514,7 @@ function onMouseUp(event: MouseEvent) {
     if (!pan.value.preserveSelection && !pan.value.moved) {
       state.selection = null;
     }
-    finishPointerInteraction();
+    finishPointerInteraction(undefined, point);
   }
 }
 
@@ -530,7 +530,7 @@ function onMouseDown(event: MouseEvent) {
     y: event.clientY - rect.top,
   });
   completeConnectionCreation(point, context);
-  finishPointerInteraction();
+  finishPointerInteraction(undefined, point);
 }
 
 function connectionPointerMovedEnough(point: Point): boolean {
@@ -690,7 +690,7 @@ async function copyImage() {
   }
 }
 
-function finishPointerInteraction(pointerId?: number) {
+function finishPointerInteraction(pointerId?: number, hoverPoint?: Point) {
   if (pointerId !== undefined) {
     try {
       canvasRef.value?.releasePointerCapture(pointerId);
@@ -707,7 +707,8 @@ function finishPointerInteraction(pointerId?: number) {
   connectionStartedAt.value = 0;
   state.guides = [];
   clearHover();
-  updateCursor('default');
+  if (hoverPoint) refreshHover(hoverPoint);
+  else updateCursor('default');
   draw();
 }
 
