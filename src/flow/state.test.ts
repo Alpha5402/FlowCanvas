@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Connection, FlowElement } from '../types/flow';
 import {
   applyElementSizeMode,
+  clearHoverState,
   cloneSnapshot,
   createFixedResizeBase,
   isSelected,
@@ -117,5 +118,23 @@ describe('state', () => {
       { id: 'b', x: 20, y: 30 },
       { id: 'c', x: 300, y: 310 },
     ]);
+  });
+
+  it('clears every hover state after an interaction finishes', () => {
+    const hoverState = {
+      hoverElementId: 'element-a',
+      hoverConnectionId: 'connection-a',
+      hoverAnchor: { elementId: 'element-a', side: 'right' as const },
+      hoverResizeHandle: 'bottom-right' as const,
+    };
+
+    clearHoverState(hoverState);
+
+    expect(hoverState).toEqual({
+      hoverElementId: null,
+      hoverConnectionId: null,
+      hoverAnchor: null,
+      hoverResizeHandle: null,
+    });
   });
 });

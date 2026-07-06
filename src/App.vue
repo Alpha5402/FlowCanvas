@@ -23,6 +23,7 @@ import {
 import { renderFlow } from './flow/render';
 import {
   applyElementSizeMode,
+  clearHoverState,
   cloneSelection,
   createFixedResizeBase,
   deleteSelectionFromFlow,
@@ -765,7 +766,7 @@ function finishPointerInteraction(pointerId?: number) {
   state.previewConnection = null;
   connectionStartedAt.value = 0;
   state.guides = [];
-  state.hoverAnchor = null;
+  clearHover();
   updateCursor('default');
   draw();
 }
@@ -986,10 +987,7 @@ function refreshHover(point: Point) {
 }
 
 function clearHover() {
-  state.hoverElementId = null;
-  state.hoverConnectionId = null;
-  state.hoverAnchor = null;
-  state.hoverResizeHandle = null;
+  clearHoverState(state);
 }
 
 function updateCursor(cursor: string) {

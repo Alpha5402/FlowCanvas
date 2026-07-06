@@ -1,4 +1,4 @@
-import type { Connection, FlowElement, Selection } from '../types/flow';
+import type { Connection, EditorState, FlowElement, Selection } from '../types/flow';
 
 export interface FlowSnapshot {
   elements: FlowElement[];
@@ -112,6 +112,15 @@ export function restoreElementPositions(
     element.x = original.x;
     element.y = original.y;
   }
+}
+
+export function clearHoverState(
+  state: Pick<EditorState, 'hoverElementId' | 'hoverConnectionId' | 'hoverAnchor' | 'hoverResizeHandle'>,
+) {
+  state.hoverElementId = null;
+  state.hoverConnectionId = null;
+  state.hoverAnchor = null;
+  state.hoverResizeHandle = null;
 }
 
 export function pushHistory(history: HistoryState, snapshot: FlowSnapshot) {
