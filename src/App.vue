@@ -870,6 +870,9 @@ function onKeyDown(event: KeyboardEvent) {
       const element = state.elements.find((item) => item.id === resize.value?.id);
       if (element) Object.assign(element, cloneElement(resize.value.original));
     }
+    if (state.mode === 'idle') {
+      state.selection = null;
+    }
     finishPointerInteraction();
     return;
   }
