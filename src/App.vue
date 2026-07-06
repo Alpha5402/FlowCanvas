@@ -784,6 +784,30 @@ function updateSelectedElementColor(key: 'backgroundColor' | 'borderColor', valu
   updateSelectedElements(key, value);
 }
 
+function updateSelectedElementNumber<K extends keyof FlowElement>(key: K, input: HTMLInputElement) {
+  if (input.value === '') return;
+  const value = input.valueAsNumber;
+  if (!Number.isFinite(value)) return;
+  updateSelectedElements(key, value as FlowElement[K]);
+}
+
+function updateSelectedConnectionNumber<K extends keyof Connection>(key: K, input: HTMLInputElement) {
+  if (input.value === '') return;
+  const value = input.valueAsNumber;
+  if (!Number.isFinite(value)) return;
+  updateSelectedConnections(key, value as Connection[K]);
+}
+
+function updateSelectedElementChoice<K extends keyof FlowElement>(key: K, input: HTMLSelectElement) {
+  if (!input.value) return;
+  updateSelectedElements(key, input.value as FlowElement[K]);
+}
+
+function updateSelectedConnectionChoice<K extends keyof Connection>(key: K, input: HTMLSelectElement) {
+  if (!input.value) return;
+  updateSelectedConnections(key, input.value as Connection[K]);
+}
+
 function undoAction() {
   const previous = undo(history, snapshot());
   if (previous) applySnapshot(previous);
@@ -1203,7 +1227,7 @@ onBeforeUnmount(() => {
             Shape
             <select
               :value="batchElementValue('shape')"
-              @change="updateSelectedElements('shape', ($event.target as HTMLSelectElement).value as FlowElement['shape'])"
+              @change="updateSelectedElementChoice('shape', $event.target as HTMLSelectElement)"
             >
               <option value="" disabled></option>
               <option value="rect">Rect</option>
@@ -1216,7 +1240,7 @@ onBeforeUnmount(() => {
             Size mode
             <select
               :value="batchElementValue('sizeMode')"
-              @change="updateSelectedElements('sizeMode', ($event.target as HTMLSelectElement).value as FlowElement['sizeMode'])"
+              @change="updateSelectedElementChoice('sizeMode', $event.target as HTMLSelectElement)"
             >
               <option value="" disabled></option>
               <option value="fixed">Fixed</option>
@@ -1235,7 +1259,7 @@ onBeforeUnmount(() => {
                 min="48"
                 :disabled="batchElementValue('sizeMode') === 'fit-content'"
                 :value="batchElementValue('width')"
-                @input="updateSelectedElements('width', Number(($event.target as HTMLInputElement).value))"
+                @input="updateSelectedElementNumber('width', $event.target as HTMLInputElement)"
               />
             </label>
             <label>
@@ -1245,7 +1269,7 @@ onBeforeUnmount(() => {
                 min="32"
                 :disabled="batchElementValue('sizeMode') === 'fit-content'"
                 :value="batchElementValue('height')"
-                @input="updateSelectedElements('height', Number(($event.target as HTMLInputElement).value))"
+                @input="updateSelectedElementNumber('height', $event.target as HTMLInputElement)"
               />
             </label>
           </div>
@@ -1256,7 +1280,7 @@ onBeforeUnmount(() => {
                 type="number"
                 min="0"
                 :value="batchElementValue('padding')"
-                @input="updateSelectedElements('padding', Number(($event.target as HTMLInputElement).value))"
+                @input="updateSelectedElementNumber('padding', $event.target as HTMLInputElement)"
               />
             </label>
             <label>
@@ -1265,7 +1289,7 @@ onBeforeUnmount(() => {
                 type="number"
                 min="0"
                 :value="batchElementValue('borderRadius')"
-                @input="updateSelectedElements('borderRadius', Number(($event.target as HTMLInputElement).value))"
+                @input="updateSelectedElementNumber('borderRadius', $event.target as HTMLInputElement)"
               />
             </label>
           </div>
@@ -1277,7 +1301,7 @@ onBeforeUnmount(() => {
             Text align
             <select
               :value="batchElementValue('textAlign')"
-              @change="updateSelectedElements('textAlign', ($event.target as HTMLSelectElement).value as FlowElement['textAlign'])"
+              @change="updateSelectedElementChoice('textAlign', $event.target as HTMLSelectElement)"
             >
               <option value="" disabled></option>
               <option value="left">Left</option>
@@ -1312,7 +1336,7 @@ onBeforeUnmount(() => {
               min="0"
               max="12"
               :value="batchElementValue('borderWidth')"
-              @input="updateSelectedElements('borderWidth', Number(($event.target as HTMLInputElement).value))"
+              @input="updateSelectedElementNumber('borderWidth', $event.target as HTMLInputElement)"
             />
           </label>
         </fieldset>
@@ -1325,7 +1349,7 @@ onBeforeUnmount(() => {
             Line type
             <select
               :value="batchConnectionValue('lineType')"
-              @change="updateSelectedConnections('lineType', ($event.target as HTMLSelectElement).value as Connection['lineType'])"
+              @change="updateSelectedConnectionChoice('lineType', $event.target as HTMLSelectElement)"
             >
               <option value="" disabled></option>
               <option value="solid">Solid</option>
@@ -1339,7 +1363,7 @@ onBeforeUnmount(() => {
               min="1"
               max="12"
               :value="batchConnectionValue('lineWidth')"
-              @input="updateSelectedConnections('lineWidth', Number(($event.target as HTMLInputElement).value))"
+              @input="updateSelectedConnectionNumber('lineWidth', $event.target as HTMLInputElement)"
             />
           </label>
           <div class="field-row">
@@ -1350,7 +1374,7 @@ onBeforeUnmount(() => {
                 min="1"
                 :disabled="batchConnectionValue('lineType') === 'solid'"
                 :value="batchConnectionValue('dashLength')"
-                @input="updateSelectedConnections('dashLength', Number(($event.target as HTMLInputElement).value))"
+                @input="updateSelectedConnectionNumber('dashLength', $event.target as HTMLInputElement)"
               />
             </label>
             <label>
@@ -1360,7 +1384,7 @@ onBeforeUnmount(() => {
                 min="1"
                 :disabled="batchConnectionValue('lineType') === 'solid'"
                 :value="batchConnectionValue('dashGap')"
-                @input="updateSelectedConnections('dashGap', Number(($event.target as HTMLInputElement).value))"
+                @input="updateSelectedConnectionNumber('dashGap', $event.target as HTMLInputElement)"
               />
             </label>
           </div>
@@ -1368,7 +1392,7 @@ onBeforeUnmount(() => {
             Arrow
             <select
               :value="batchConnectionValue('arrow')"
-              @change="updateSelectedConnections('arrow', ($event.target as HTMLSelectElement).value as Connection['arrow'])"
+              @change="updateSelectedConnectionChoice('arrow', $event.target as HTMLSelectElement)"
             >
               <option value="" disabled></option>
               <option value="none">None</option>
@@ -1381,7 +1405,7 @@ onBeforeUnmount(() => {
             Text position
             <select
               :value="batchConnectionValue('textPosition')"
-              @change="updateSelectedConnections('textPosition', ($event.target as HTMLSelectElement).value as Connection['textPosition'])"
+              @change="updateSelectedConnectionChoice('textPosition', $event.target as HTMLSelectElement)"
             >
               <option value="" disabled></option>
               <option value="above">Above</option>
