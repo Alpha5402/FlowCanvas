@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Connection, FlowElement } from '../types/flow';
 import { getConnectionLabelBox, getConnectionPath } from './geometry';
-import { getConnectionHitDistance, hitTestCanvasObject, hitTestConnection } from './hitTesting';
+import { getConnectionHitDistance, hitTestCanvasObject, hitTestConnection, hitTestElementAnchorOrEdge } from './hitTesting';
 
 const element: FlowElement = {
   id: 'a',
@@ -15,7 +15,7 @@ const element: FlowElement = {
   padding: 10,
   textAlign: 'center',
   borderRadius: 0,
-  backgroundColor: '#ffffff',
+  backgroundColor: 'transparent',
   borderColor: '#000000',
   borderWidth: 1,
 };
@@ -67,5 +67,23 @@ describe('hitTesting', () => {
     const hit = hitTestCanvasObject({ x: 190, y: 45 }, elements, [{ ...connection, text: '' }], measurer);
 
     expect(hit).toEqual({ type: 'element', item: expect.objectContaining({ id: 'overlay' }) });
+  });
+
+  it('resolves connection targets from element anchors and nearby edges without selecting first', () => {
+    const elements = [
+      element,
+      { ...element, id: 'b', x: 260, y: 120 },
+    ];
+
+    expect(hitTestElementAnchorOrEdge({ x: 260, y: 150 }, elements, 'a', measurer)).toEqual(
+      expect.objectContaining({ elementId: 'b', side: 'left' }),
+    );
+    expect(hitTestElementAnchorOrEdge({ x: 320, y: 119 }, elements, 'a', measurer)).toEqual(
+      expect.objectContaining({ elementId: 'b', side: 'top' }),
+    );
+  });
+
+  it('does not resolve a connection target on the source element', () => {
+    expect(hitTestElementAnchorOrEdge({ x: 120, y: 30 }, [element], 'a', measurer)).toBeNull();
   });
 });
