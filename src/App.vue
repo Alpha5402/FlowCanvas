@@ -657,6 +657,7 @@ function createExportCanvas() {
       hoverAnchor: null,
       hoverResizeHandle: null,
       previewConnection: null,
+      showGrid: false,
     },
   );
 

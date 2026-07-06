@@ -31,6 +31,7 @@ export interface RenderOptions {
   hoverAnchor: ConnectionEndpoint | null;
   hoverResizeHandle: ResizeHandle | null;
   previewConnection: { source: Anchor; pointer: { x: number; y: number }; target: Anchor | null } | null;
+  showGrid?: boolean;
 }
 
 export function renderFlow(
@@ -46,7 +47,7 @@ export function renderFlow(
   context.clearRect(0, 0, canvas.width, canvas.height);
   context.save();
   context.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
-  drawBackground(context, canvas, viewport);
+  drawBackground(context, canvas, viewport, options.showGrid ?? true);
   context.translate(viewport.x, viewport.y);
   context.scale(viewport.zoom, viewport.zoom);
   const measurer: Measurer = context;
@@ -84,11 +85,17 @@ export function renderFlow(
   context.restore();
 }
 
-function drawBackground(context: CanvasRenderingContext2D, canvas: HTMLCanvasElement, viewport: ViewportState) {
+function drawBackground(
+  context: CanvasRenderingContext2D,
+  canvas: HTMLCanvasElement,
+  viewport: ViewportState,
+  showGrid: boolean,
+) {
   const width = canvas.width / (window.devicePixelRatio || 1);
   const height = canvas.height / (window.devicePixelRatio || 1);
-  context.fillStyle = '#f5f7fb';
+  context.fillStyle = showGrid ? '#f5f7fb' : '#ffffff';
   context.fillRect(0, 0, width, height);
+  if (!showGrid) return;
   context.strokeStyle = '#e2e8f0';
   context.lineWidth = 1;
   const gridSize = 24 * viewport.zoom;
