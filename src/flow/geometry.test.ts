@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Connection, FlowElement } from '../types/flow';
 import {
   createConnectionPath,
+  distanceToConnection,
   getArrowAngle,
   getConnectionPath,
   getElementAnchors,
@@ -109,6 +110,15 @@ describe('geometry', () => {
 
     expect(getArrowAngle(path, 'start')).toBeCloseTo(Math.PI);
     expect(getArrowAngle(path, 'end')).toBeCloseTo(0);
+  });
+
+  it('measures distance from points to sampled connection paths', () => {
+    const source = getElementAnchors(baseElement, measurer).find((anchor) => anchor.side === 'right')!;
+    const target = getElementAnchors({ ...baseElement, id: 'b', x: 260 }, measurer).find((anchor) => anchor.side === 'left')!;
+    const path = createConnectionPath(source, target);
+
+    expect(distanceToConnection(path.samplePoints[4], path)).toBeCloseTo(0);
+    expect(distanceToConnection({ x: source.x, y: source.y + 120 }, path)).toBeGreaterThan(80);
   });
 
   it('infers target side when creating a new element from blank space', () => {
