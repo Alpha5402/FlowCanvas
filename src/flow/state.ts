@@ -13,8 +13,8 @@ export interface HistoryState {
 
 const PAN_MOVE_THRESHOLD = 3;
 
-export function isEditingFieldTag(tagName: string | null | undefined): boolean {
-  return tagName === 'INPUT' || tagName === 'SELECT' || tagName === 'TEXTAREA';
+export function isInteractiveControlTag(tagName: string | null | undefined): boolean {
+  return tagName === 'INPUT' || tagName === 'SELECT' || tagName === 'TEXTAREA' || tagName === 'BUTTON';
 }
 
 export function cloneSnapshot(snapshot: FlowSnapshot): FlowSnapshot {

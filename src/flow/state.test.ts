@@ -13,7 +13,7 @@ import {
   hasElementPositionChanges,
   hasFlowContentChanged,
   hasSignificantPanMovement,
-  isEditingFieldTag,
+  isInteractiveControlTag,
   isSelected,
   normalizeHexColorInput,
   normalizeConnectionNumber,
@@ -55,12 +55,12 @@ const connection: Connection = {
 };
 
 describe('state', () => {
-  it('detects form editing targets for keyboard shortcut scoping', () => {
-    expect(isEditingFieldTag('INPUT')).toBe(true);
-    expect(isEditingFieldTag('SELECT')).toBe(true);
-    expect(isEditingFieldTag('TEXTAREA')).toBe(true);
-    expect(isEditingFieldTag('BUTTON')).toBe(false);
-    expect(isEditingFieldTag(undefined)).toBe(false);
+  it('detects interactive controls for keyboard shortcut scoping', () => {
+    expect(isInteractiveControlTag('INPUT')).toBe(true);
+    expect(isInteractiveControlTag('SELECT')).toBe(true);
+    expect(isInteractiveControlTag('TEXTAREA')).toBe(true);
+    expect(isInteractiveControlTag('BUTTON')).toBe(true);
+    expect(isInteractiveControlTag(undefined)).toBe(false);
   });
 
   it('toggles multi-selection back to a single item and then empty', () => {

@@ -33,7 +33,7 @@ import {
   hasElementPositionChanges,
   hasFlowContentChanged,
   hasSignificantPanMovement,
-  isEditingFieldTag,
+  isInteractiveControlTag,
   isSelected,
   normalizeHexColorInput,
   normalizeConnectionNumber,
@@ -1000,11 +1000,11 @@ function redoAction() {
 
 function onKeyDown(event: KeyboardEvent) {
   const target = event.target as HTMLElement | null;
-  const isEditingField = isEditingFieldTag(target?.tagName);
+  const isInteractiveControl = isInteractiveControlTag(target?.tagName);
   const commandKey = event.metaKey || event.ctrlKey;
 
   if (event.key === 'Escape') {
-    if (isEditingField && state.mode === 'idle') return;
+    if (isInteractiveControl && state.mode === 'idle') return;
     event.preventDefault();
     if (state.mode === 'idle') {
       state.selection = null;
@@ -1015,39 +1015,39 @@ function onKeyDown(event: KeyboardEvent) {
     return;
   }
 
-  if (event.code === 'Space' && !isEditingField) {
+  if (event.code === 'Space' && !isInteractiveControl) {
     event.preventDefault();
     isSpacePressed.value = true;
     if (state.mode === 'idle') updateCursor('grab');
     return;
   }
 
-  if (!isEditingField && commandKey && event.key.toLowerCase() === 'z') {
+  if (!isInteractiveControl && commandKey && event.key.toLowerCase() === 'z') {
     event.preventDefault();
     if (event.shiftKey) redoAction();
     else undoAction();
     return;
   }
 
-  if (!isEditingField && commandKey && event.key.toLowerCase() === 'y') {
+  if (!isInteractiveControl && commandKey && event.key.toLowerCase() === 'y') {
     event.preventDefault();
     redoAction();
     return;
   }
 
-  if (!isEditingField && !commandKey && state.mode === 'idle' && event.key.toLowerCase() === 'n') {
+  if (!isInteractiveControl && !commandKey && state.mode === 'idle' && event.key.toLowerCase() === 'n') {
     event.preventDefault();
     addElementAtViewportCenter();
     return;
   }
 
-  if (!isEditingField && !commandKey && event.key === '0') {
+  if (!isInteractiveControl && !commandKey && event.key === '0') {
     event.preventDefault();
     resetView();
     return;
   }
 
-  if (!isEditingField && (event.key === 'Delete' || event.key === 'Backspace')) {
+  if (!isInteractiveControl && (event.key === 'Delete' || event.key === 'Backspace')) {
     event.preventDefault();
     deleteSelection();
   }
