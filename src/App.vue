@@ -126,6 +126,7 @@ const selectionSummary = computed(() => {
 });
 const exportStatus = ref('');
 const exportBusy = ref(false);
+const textEdit = ref<{ type: 'element' | 'connection'; id: string; hasHistory: boolean } | null>(null);
 
 const drag = ref<{
   primaryId: string;
@@ -756,6 +757,7 @@ function finishPointerInteraction(pointerId?: number, hoverPoint?: Point) {
   drag.value = null;
   resize.value = null;
   pan.value = null;
+  endTextEdit();
   state.mode = 'idle';
   state.pendingConnectionSource = null;
   state.previewConnection = null;
@@ -785,6 +787,31 @@ function updateElement<K extends keyof FlowElement>(element: FlowElement, key: K
   draw();
 }
 
+function beginTextEdit(type: 'element' | 'connection', id: string) {
+  textEdit.value = { type, id, hasHistory: false };
+}
+
+function endTextEdit() {
+  textEdit.value = null;
+}
+
+function ensureTextEditHistory(type: 'element' | 'connection', id: string) {
+  if (!textEdit.value || textEdit.value.type !== type || textEdit.value.id !== id) {
+    beginTextEdit(type, id);
+  }
+  const session = textEdit.value;
+  if (!session || session.hasHistory) return;
+  recordHistory();
+  session.hasHistory = true;
+}
+
+function updateElementText(element: FlowElement, value: string) {
+  if (element.text === value) return;
+  ensureTextEditHistory('element', element.id);
+  element.text = value;
+  draw();
+}
+
 function updateElementSizeMode(element: FlowElement, sizeMode: FlowElement['sizeMode']) {
   if (element.sizeMode === sizeMode) return;
   const context = canvasRef.value?.getContext('2d') ?? undefined;
@@ -798,6 +825,13 @@ function updateConnection<K extends keyof Connection>(connection: Connection, ke
   if (Object.is(connection[key], value)) return;
   recordHistory();
   connection[key] = value;
+  draw();
+}
+
+function updateConnectionText(connection: Connection, value: string) {
+  if (connection.text === value) return;
+  ensureTextEditHistory('connection', connection.id);
+  connection.text = value;
   draw();
 }
 
@@ -1111,7 +1145,9 @@ onBeforeUnmount(() => {
             <input
               ref="elementTextInputRef"
               :value="selectedElement.text"
-              @input="updateElement(selectedElement, 'text', ($event.target as HTMLInputElement).value)"
+              @focus="beginTextEdit('element', selectedElement.id)"
+              @blur="endTextEdit"
+              @input="updateElementText(selectedElement, ($event.target as HTMLInputElement).value)"
             />
           </label>
           <label>
@@ -1235,7 +1271,9 @@ onBeforeUnmount(() => {
             Text
             <input
               :value="selectedConnection.text"
-              @input="updateConnection(selectedConnection, 'text', ($event.target as HTMLInputElement).value)"
+              @focus="beginTextEdit('connection', selectedConnection.id)"
+              @blur="endTextEdit"
+              @input="updateConnectionText(selectedConnection, ($event.target as HTMLInputElement).value)"
             />
           </label>
           <label>
