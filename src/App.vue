@@ -785,6 +785,7 @@ function finishPointerInteraction(pointerId?: number, hoverPoint?: Point) {
 
 function deleteSelection() {
   if (!state.selection) return;
+  clearExportStatus();
   const next = deleteSelectionFromFlow(state.elements, state.connections, state.selection);
   if (!hasFlowContentChanged(state, next)) {
     state.selection = next.selection;
