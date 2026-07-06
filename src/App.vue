@@ -99,6 +99,15 @@ const selectedConnections = computed(() =>
 const hasMixedSelection = computed(() => selectedElements.value.length > 0 && selectedConnections.value.length > 0);
 const showBatchElementForm = computed(() => selectedElements.value.length > 1 && selectedConnections.value.length === 0);
 const showBatchConnectionForm = computed(() => selectedConnections.value.length > 1 && selectedElements.value.length === 0);
+const selectionSummary = computed(() => {
+  const elementCount = selectedElements.value.length;
+  const connectionCount = selectedConnections.value.length;
+  if (elementCount === 0 && connectionCount === 0) return 'No selection';
+  const parts = [];
+  if (elementCount > 0) parts.push(`${elementCount} ${elementCount === 1 ? 'element' : 'elements'}`);
+  if (connectionCount > 0) parts.push(`${connectionCount} ${connectionCount === 1 ? 'connection' : 'connections'}`);
+  return parts.join(', ');
+});
 const exportStatus = ref('');
 
 const drag = ref<{
@@ -1029,6 +1038,7 @@ onBeforeUnmount(() => {
       <div class="mode-card">
         <span class="mode-label">Mode</span>
         <strong>{{ state.mode === 'idle' ? 'Select, drag, connect' : state.mode }}</strong>
+        <span class="mode-label">{{ selectionSummary }}</span>
         <span class="mode-label">{{ Math.round(state.viewport.zoom * 100) }}%</span>
       </div>
     </aside>
