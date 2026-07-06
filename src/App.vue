@@ -26,6 +26,7 @@ import {
   cloneSelection,
   createFixedResizeBase,
   deleteSelectionFromFlow,
+  getExportContent,
   getSharedValue,
   getSelectionItems,
   isSelected,
@@ -593,37 +594,10 @@ function resetView() {
   draw();
 }
 
-function getExportContent() {
-  const selectionItems = selectedItems.value;
-  const selectedElementIds = new Set(selectionItems.filter((item) => item.type === 'element').map((item) => item.id));
-  const selectedConnectionIds = new Set(selectionItems.filter((item) => item.type === 'connection').map((item) => item.id));
-  const hasSelection = selectionItems.length > 0;
-
-  const connections = hasSelection
-    ? state.connections.filter(
-        (connection) =>
-          selectedConnectionIds.has(connection.id) ||
-          (selectedElementIds.has(connection.source.elementId) && selectedElementIds.has(connection.target.elementId)),
-      )
-    : state.connections;
-
-  const requiredElementIds = new Set(selectedElementIds);
-  for (const connection of connections) {
-    requiredElementIds.add(connection.source.elementId);
-    requiredElementIds.add(connection.target.elementId);
-  }
-
-  const elements = hasSelection
-    ? state.elements.filter((element) => requiredElementIds.has(element.id))
-    : state.elements;
-
-  return { elements, connections };
-}
-
 function createExportCanvas() {
   const sourceCanvas = canvasRef.value;
   const sourceContext = sourceCanvas?.getContext('2d') ?? undefined;
-  const content = getExportContent();
+  const content = getExportContent(state.elements, state.connections, state.selection);
   sourceContext?.save();
   if (sourceContext) sourceContext.font = EXPORT_FONT;
   const bounds = getFlowBounds(content.elements, content.connections, sourceContext);

@@ -47,6 +47,35 @@ export function deleteSelectionFromFlow(
   };
 }
 
+export function getExportContent(
+  elements: FlowElement[],
+  connections: Connection[],
+  selection: Selection,
+): Pick<FlowSnapshot, 'elements' | 'connections'> {
+  const selectionItems = getSelectionItems(selection);
+  const selectedElementIds = new Set(selectionItems.filter((item) => item.type === 'element').map((item) => item.id));
+  const selectedConnectionIds = new Set(selectionItems.filter((item) => item.type === 'connection').map((item) => item.id));
+  const hasSelection = selectionItems.length > 0;
+
+  const exportConnections = hasSelection
+    ? connections.filter(
+        (connection) =>
+          selectedConnectionIds.has(connection.id) ||
+          (selectedElementIds.has(connection.source.elementId) && selectedElementIds.has(connection.target.elementId)),
+      )
+    : connections;
+
+  const requiredElementIds = new Set(selectedElementIds);
+  for (const connection of exportConnections) {
+    requiredElementIds.add(connection.source.elementId);
+    requiredElementIds.add(connection.target.elementId);
+  }
+
+  const exportElements = hasSelection ? elements.filter((element) => requiredElementIds.has(element.id)) : elements;
+
+  return { elements: exportElements, connections: exportConnections };
+}
+
 export function getSelectionItems(selection: Selection): Array<{ type: 'element' | 'connection'; id: string }> {
   if (!selection) return [];
   if (selection.type === 'multi') return selection.items;

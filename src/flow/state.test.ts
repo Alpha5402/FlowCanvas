@@ -5,6 +5,7 @@ import {
   clearHoverState,
   cloneSnapshot,
   createFixedResizeBase,
+  getExportContent,
   getSharedValue,
   isSelected,
   normalizeConnectionNumber,
@@ -91,6 +92,34 @@ describe('state', () => {
     expect(getSharedValue(same, 'borderWidth')).toBe(2);
     expect(getSharedValue(mixed, 'borderWidth')).toBe('');
     expect(getSharedValue([], 'borderWidth')).toBe('');
+  });
+
+  it('resolves export content for board and selection exports', () => {
+    const elements = [
+      { ...element, id: 'a' },
+      { ...element, id: 'b' },
+      { ...element, id: 'c' },
+    ];
+    const connections: Connection[] = [
+      { ...connection, id: 'ab', source: { elementId: 'a', side: 'right' }, target: { elementId: 'b', side: 'left' } },
+      { ...connection, id: 'bc', source: { elementId: 'b', side: 'right' }, target: { elementId: 'c', side: 'left' } },
+    ];
+
+    expect(getExportContent(elements, connections, null)).toEqual({ elements, connections });
+    expect(getExportContent(elements, connections, { type: 'connection', id: 'ab' }).elements.map((item) => item.id)).toEqual([
+      'a',
+      'b',
+    ]);
+    expect(getExportContent(elements, connections, { type: 'element', id: 'a' }).connections).toHaveLength(0);
+    expect(
+      getExportContent(elements, connections, {
+        type: 'multi',
+        items: [
+          { type: 'element', id: 'a' },
+          { type: 'element', id: 'b' },
+        ],
+      }).connections.map((item) => item.id),
+    ).toEqual(['ab']);
   });
 
   it('normalizes numeric element values before writing inspector changes', () => {
