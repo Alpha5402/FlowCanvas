@@ -283,6 +283,7 @@ function onPointerDown(event: PointerEvent) {
 
   if (state.mode === 'creating-connection' && state.pendingConnectionSource && state.previewConnection) {
     if (!isPrimaryButtonEvent(event)) return;
+    event.preventDefault();
     clearExportStatus();
     completeConnectionCreation(point, context);
     finishPointerInteraction(undefined, point);
@@ -290,6 +291,7 @@ function onPointerDown(event: PointerEvent) {
   }
 
   if ((isSpacePressed.value && isPrimaryButtonEvent(event)) || event.button === 1) {
+    event.preventDefault();
     clearExportStatus();
     state.mode = 'panning-canvas';
     pan.value = {
@@ -304,6 +306,7 @@ function onPointerDown(event: PointerEvent) {
   }
 
   if (!isPrimaryButtonEvent(event)) return;
+  event.preventDefault();
   clearExportStatus();
 
   const anchor = elementControlsHidden ? null : hitTestAnchorHandle(point, state.elements, context);
