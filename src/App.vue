@@ -6,6 +6,7 @@ import {
   getElementBox,
   getConnectionPath,
   getTextOffset,
+  hasSignificantPointerMovement,
   inferTargetSide,
   resizeElementBox,
   snapElement,
@@ -521,8 +522,7 @@ function onMouseDown(event: MouseEvent) {
 function connectionPointerMovedEnough(point: Point): boolean {
   const source = state.previewConnection?.source;
   if (!source) return false;
-  const screenDistance = Math.hypot(point.x - source.x, point.y - source.y) * state.viewport.zoom;
-  return screenDistance >= CONNECTION_CREATION_MOVE_THRESHOLD;
+  return hasSignificantPointerMovement(source, point, state.viewport.zoom, CONNECTION_CREATION_MOVE_THRESHOLD);
 }
 
 function getPreviewCreationPoint(point: Point): Point {

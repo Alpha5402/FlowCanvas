@@ -6,6 +6,7 @@ import {
   getArrowAngle,
   getConnectionPath,
   getElementAnchors,
+  hasSignificantPointerMovement,
   inferTargetSide,
   measureFitContent,
   resizeElementBox,
@@ -164,6 +165,14 @@ describe('geometry', () => {
       x: source.x + 160,
       y: source.y + 24,
     });
+  });
+
+  it('measures connection creation movement in screen pixels', () => {
+    const start = { x: 100, y: 100 };
+
+    expect(hasSignificantPointerMovement(start, { x: 109, y: 100 }, 1, 10)).toBe(false);
+    expect(hasSignificantPointerMovement(start, { x: 110, y: 100 }, 1, 10)).toBe(true);
+    expect(hasSignificantPointerMovement(start, { x: 105, y: 100 }, 2, 10)).toBe(true);
   });
 
   it('resizes from the left while keeping the opposite edge fixed', () => {

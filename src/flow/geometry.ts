@@ -217,6 +217,15 @@ export function snapPreviewPoint(sourceAnchor: Anchor, pointer: Point): Point {
   return snapped;
 }
 
+export function hasSignificantPointerMovement(
+  start: Point,
+  end: Point,
+  zoom: number,
+  thresholdInScreenPixels: number,
+): boolean {
+  return Math.hypot(end.x - start.x, end.y - start.y) * zoom >= thresholdInScreenPixels;
+}
+
 export function inferTargetSide(sourceSide: AnchorSide): AnchorSide {
   if (sourceSide === 'right') return 'left';
   if (sourceSide === 'left') return 'right';
