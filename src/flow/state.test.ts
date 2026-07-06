@@ -7,6 +7,8 @@ import {
   createFixedResizeBase,
   getSharedValue,
   isSelected,
+  normalizeConnectionNumber,
+  normalizeElementNumber,
   restoreElementPositions,
   toggleSelection,
 } from './state';
@@ -89,6 +91,22 @@ describe('state', () => {
     expect(getSharedValue(same, 'borderWidth')).toBe(2);
     expect(getSharedValue(mixed, 'borderWidth')).toBe('');
     expect(getSharedValue([], 'borderWidth')).toBe('');
+  });
+
+  it('normalizes numeric element values before writing inspector changes', () => {
+    expect(normalizeElementNumber('width', 12)).toBe(48);
+    expect(normalizeElementNumber('height', 12)).toBe(32);
+    expect(normalizeElementNumber('padding', -4)).toBe(0);
+    expect(normalizeElementNumber('borderRadius', -2)).toBe(0);
+    expect(normalizeElementNumber('borderWidth', -1)).toBe(0);
+    expect(normalizeElementNumber('borderWidth', 20)).toBe(12);
+  });
+
+  it('normalizes numeric connection values before writing inspector changes', () => {
+    expect(normalizeConnectionNumber('lineWidth', 0)).toBe(1);
+    expect(normalizeConnectionNumber('lineWidth', 20)).toBe(12);
+    expect(normalizeConnectionNumber('dashLength', 0)).toBe(1);
+    expect(normalizeConnectionNumber('dashGap', -6)).toBe(1);
   });
 
   it('preserves measured dimensions when switching fit-content elements to fixed', () => {

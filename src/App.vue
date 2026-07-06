@@ -30,6 +30,8 @@ import {
   getSharedValue,
   getSelectionItems,
   isSelected,
+  normalizeConnectionNumber,
+  normalizeElementNumber,
   pushHistory,
   redo,
   restoreElementPositions,
@@ -811,14 +813,14 @@ function updateElementNumber<K extends keyof FlowElement>(element: FlowElement, 
   if (input.value === '') return;
   const value = input.valueAsNumber;
   if (!Number.isFinite(value)) return;
-  updateElement(element, key, value as FlowElement[K]);
+  updateElement(element, key, normalizeElementNumber(key, value) as FlowElement[K]);
 }
 
 function updateConnectionNumber<K extends keyof Connection>(connection: Connection, key: K, input: HTMLInputElement) {
   if (input.value === '') return;
   const value = input.valueAsNumber;
   if (!Number.isFinite(value)) return;
-  updateConnection(connection, key, value as Connection[K]);
+  updateConnection(connection, key, normalizeConnectionNumber(key, value) as Connection[K]);
 }
 
 function batchElementValue<K extends keyof FlowElement>(key: K): FlowElement[K] | '' {
@@ -858,14 +860,14 @@ function updateSelectedElementNumber<K extends keyof FlowElement>(key: K, input:
   if (input.value === '') return;
   const value = input.valueAsNumber;
   if (!Number.isFinite(value)) return;
-  updateSelectedElements(key, value as FlowElement[K]);
+  updateSelectedElements(key, normalizeElementNumber(key, value) as FlowElement[K]);
 }
 
 function updateSelectedConnectionNumber<K extends keyof Connection>(key: K, input: HTMLInputElement) {
   if (input.value === '') return;
   const value = input.valueAsNumber;
   if (!Number.isFinite(value)) return;
-  updateSelectedConnections(key, value as Connection[K]);
+  updateSelectedConnections(key, normalizeConnectionNumber(key, value) as Connection[K]);
 }
 
 function updateSelectedElementChoice<K extends keyof FlowElement>(key: K, input: HTMLSelectElement) {

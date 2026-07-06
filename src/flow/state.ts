@@ -71,6 +71,20 @@ export function getSharedValue<T extends Record<string, unknown>, K extends keyo
   return items.every((item) => Object.is(item[key], first)) ? first : '';
 }
 
+export function normalizeElementNumber(key: keyof FlowElement, value: number): number {
+  if (key === 'width') return Math.max(48, value);
+  if (key === 'height') return Math.max(32, value);
+  if (key === 'padding' || key === 'borderRadius') return Math.max(0, value);
+  if (key === 'borderWidth') return clamp(value, 0, 12);
+  return value;
+}
+
+export function normalizeConnectionNumber(key: keyof Connection, value: number): number {
+  if (key === 'lineWidth') return clamp(value, 1, 12);
+  if (key === 'dashLength' || key === 'dashGap') return Math.max(1, value);
+  return value;
+}
+
 export function toggleSelection(
   selection: Selection,
   item: { type: 'element' | 'connection'; id: string },
@@ -146,4 +160,8 @@ export function redo(history: HistoryState, current: FlowSnapshot): FlowSnapshot
   if (!next) return null;
   history.past.push(cloneSnapshot(current));
   return cloneSnapshot(next);
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
 }
