@@ -22,6 +22,7 @@ import {
 import { renderFlow } from './flow/render';
 import {
   applyElementSizeMode,
+  cloneConnection,
   clearHoverState,
   cloneSelection,
   createFixedResizeBase,
@@ -935,14 +936,6 @@ function focusElementText() {
 
 function cloneElement(element: FlowElement): FlowElement {
   return { ...element };
-}
-
-function cloneConnection(connection: Connection): Connection {
-  return {
-    ...connection,
-    source: { ...connection.source },
-    target: { ...connection.target },
-  };
 }
 
 watch(
