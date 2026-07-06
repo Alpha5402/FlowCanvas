@@ -32,6 +32,7 @@ import {
   hasElementGeometryChanged,
   hasElementPositionChanges,
   hasSignificantPanMovement,
+  isEditingFieldTag,
   isSelected,
   normalizeHexColorInput,
   normalizeConnectionNumber,
@@ -898,10 +899,11 @@ function redoAction() {
 
 function onKeyDown(event: KeyboardEvent) {
   const target = event.target as HTMLElement | null;
-  const isEditingField = target?.tagName === 'INPUT' || target?.tagName === 'SELECT' || target?.tagName === 'TEXTAREA';
+  const isEditingField = isEditingFieldTag(target?.tagName);
   const commandKey = event.metaKey || event.ctrlKey;
 
   if (event.key === 'Escape') {
+    if (isEditingField && state.mode === 'idle') return;
     event.preventDefault();
     if (state.mode === 'resizing-element' && resize.value) {
       const element = state.elements.find((item) => item.id === resize.value?.id);
@@ -924,14 +926,14 @@ function onKeyDown(event: KeyboardEvent) {
     return;
   }
 
-  if (commandKey && event.key.toLowerCase() === 'z') {
+  if (!isEditingField && commandKey && event.key.toLowerCase() === 'z') {
     event.preventDefault();
     if (event.shiftKey) redoAction();
     else undoAction();
     return;
   }
 
-  if (commandKey && event.key.toLowerCase() === 'y') {
+  if (!isEditingField && commandKey && event.key.toLowerCase() === 'y') {
     event.preventDefault();
     redoAction();
     return;

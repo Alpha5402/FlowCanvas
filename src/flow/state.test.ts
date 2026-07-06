@@ -12,6 +12,7 @@ import {
   hasElementGeometryChanged,
   hasElementPositionChanges,
   hasSignificantPanMovement,
+  isEditingFieldTag,
   isSelected,
   normalizeHexColorInput,
   normalizeConnectionNumber,
@@ -53,6 +54,14 @@ const connection: Connection = {
 };
 
 describe('state', () => {
+  it('detects form editing targets for keyboard shortcut scoping', () => {
+    expect(isEditingFieldTag('INPUT')).toBe(true);
+    expect(isEditingFieldTag('SELECT')).toBe(true);
+    expect(isEditingFieldTag('TEXTAREA')).toBe(true);
+    expect(isEditingFieldTag('BUTTON')).toBe(false);
+    expect(isEditingFieldTag(undefined)).toBe(false);
+  });
+
   it('toggles multi-selection back to a single item and then empty', () => {
     const multi = toggleSelection({ type: 'element', id: 'element-a' }, { type: 'connection', id: 'connection-a' });
     const single = toggleSelection(multi, { type: 'element', id: 'element-a' });

@@ -13,6 +13,10 @@ export interface HistoryState {
 
 const PAN_MOVE_THRESHOLD = 3;
 
+export function isEditingFieldTag(tagName: string | null | undefined): boolean {
+  return tagName === 'INPUT' || tagName === 'SELECT' || tagName === 'TEXTAREA';
+}
+
 export function cloneSnapshot(snapshot: FlowSnapshot): FlowSnapshot {
   return {
     elements: snapshot.elements.map((element) => ({ ...element })),
