@@ -748,11 +748,15 @@ async function copyImage() {
       exportStatus.value = 'Nothing to copy';
       return;
     }
+    if (!navigator.clipboard?.write || typeof ClipboardItem === 'undefined') {
+      exportStatus.value = 'Image copy is unavailable in this browser';
+      return;
+    }
     const blob = await canvasToPngBlob(exportCanvas);
     await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
     exportStatus.value = 'Image copied';
   } catch {
-    exportStatus.value = 'Copy is unavailable in this browser';
+    exportStatus.value = 'Image copy failed';
   } finally {
     exportBusy.value = false;
   }
