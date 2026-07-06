@@ -164,7 +164,7 @@ function drawConnection(
   context.save();
   context.strokeStyle = selected ? '#ef4444' : hovered ? '#2563eb' : '#475569';
   context.fillStyle = selected ? '#ef4444' : hovered ? '#2563eb' : '#475569';
-  context.lineWidth = (connection.lineWidth ?? 1) + (selected || hovered ? 1.5 : 0);
+  context.lineWidth = getConnectionStrokeWidth(connection, selected, hovered);
   context.setLineDash(connection.lineType === 'dashed' ? [connection.dashLength, connection.dashGap] : []);
   drawConnectionPath(context, path);
 
@@ -177,6 +177,10 @@ function drawConnection(
   }
   drawConnectionText(context, connection, path);
   context.restore();
+}
+
+export function getConnectionStrokeWidth(connection: Pick<Connection, 'lineWidth'>, selected: boolean, hovered: boolean): number {
+  return Math.max(1, connection.lineWidth ?? 1) + (selected || hovered ? 1.5 : 0);
 }
 
 function drawPreviewConnection(
