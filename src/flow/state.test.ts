@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Connection, FlowElement } from '../types/flow';
-import { cloneSnapshot, isSelected, toggleSelection } from './state';
+import { applyElementSizeMode, cloneSnapshot, isSelected, toggleSelection } from './state';
 
 const element: FlowElement = {
   id: 'element-a',
@@ -65,5 +65,23 @@ describe('state', () => {
 
     expect(snapshot.connections[0].source.elementId).toBe('element-a');
     expect(snapshot.selection.items[0].id).toBe('element-a');
+  });
+
+  it('preserves measured dimensions when switching fit-content elements to fixed', () => {
+    const next = { ...element, sizeMode: 'fit-content' as const, width: 20, height: 20 };
+    const changed = applyElementSizeMode(next, 'fixed', { width: 148, height: 52 });
+
+    expect(changed).toBe(true);
+    expect(next.sizeMode).toBe('fixed');
+    expect(next.width).toBe(148);
+    expect(next.height).toBe(52);
+  });
+
+  it('does not report a size mode change when the element already matches', () => {
+    const next = { ...element };
+
+    expect(applyElementSizeMode(next, 'fixed', { width: 200, height: 80 })).toBe(false);
+    expect(next.width).toBe(120);
+    expect(next.height).toBe(64);
   });
 });

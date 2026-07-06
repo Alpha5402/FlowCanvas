@@ -20,6 +20,7 @@ import {
 } from './flow/hitTesting';
 import { renderFlow } from './flow/render';
 import {
+  applyElementSizeMode,
   cloneSelection,
   deleteSelectionFromFlow,
   getSelectionItems,
@@ -770,11 +771,7 @@ function updateElementSizeMode(element: FlowElement, sizeMode: FlowElement['size
   const context = canvasRef.value?.getContext('2d') ?? undefined;
   const box = getElementBox(element, context);
   recordHistory();
-  if (sizeMode === 'fixed') {
-    element.width = box.width;
-    element.height = box.height;
-  }
-  element.sizeMode = sizeMode;
+  applyElementSizeMode(element, sizeMode, box);
   draw();
 }
 
@@ -866,14 +863,7 @@ function updateSelectedElementSizeMode(input: HTMLSelectElement) {
   const measuredBoxes = new Map(selectedElements.value.map((element) => [element.id, getElementBox(element, context)]));
   recordHistory();
   for (const element of selectedElements.value) {
-    if (sizeMode === 'fixed' && element.sizeMode === 'fit-content') {
-      const box = measuredBoxes.get(element.id);
-      if (box) {
-        element.width = box.width;
-        element.height = box.height;
-      }
-    }
-    element.sizeMode = sizeMode;
+    applyElementSizeMode(element, sizeMode, measuredBoxes.get(element.id));
   }
   draw();
 }

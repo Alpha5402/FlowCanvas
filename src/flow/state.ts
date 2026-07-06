@@ -79,6 +79,20 @@ export function toggleSelection(
   return { type: 'multi', items: next };
 }
 
+export function applyElementSizeMode(
+  element: FlowElement,
+  sizeMode: FlowElement['sizeMode'],
+  measuredSize?: Pick<FlowElement, 'width' | 'height'>,
+): boolean {
+  if (element.sizeMode === sizeMode) return false;
+  if (sizeMode === 'fixed' && measuredSize) {
+    element.width = measuredSize.width;
+    element.height = measuredSize.height;
+  }
+  element.sizeMode = sizeMode;
+  return true;
+}
+
 export function pushHistory(history: HistoryState, snapshot: FlowSnapshot) {
   history.past.push(cloneSnapshot(snapshot));
   history.future = [];
