@@ -11,6 +11,7 @@ import {
   getSharedValue,
   hasElementGeometryChanged,
   hasElementPositionChanges,
+  hasFlowContentChanged,
   hasSignificantPanMovement,
   isEditingFieldTag,
   isSelected,
@@ -213,6 +214,22 @@ describe('state', () => {
       'legacy-b',
     ]);
     expect(deleteSelectionFromFlow(elements, [legacy], { type: 'element', id: 'legacy-a' }).connections).toHaveLength(0);
+  });
+
+  it('detects whether flow content ids changed after an operation', () => {
+    const previous = {
+      elements: [{ ...element, id: 'a' }, { ...element, id: 'b' }],
+      connections: [{ ...connection, id: 'ab' }],
+    };
+
+    expect(hasFlowContentChanged(previous, { elements: previous.elements, connections: previous.connections })).toBe(false);
+    expect(hasFlowContentChanged(previous, { elements: [previous.elements[0]], connections: previous.connections })).toBe(true);
+    expect(
+      hasFlowContentChanged(previous, {
+        elements: [previous.elements[1], previous.elements[0]],
+        connections: previous.connections,
+      }),
+    ).toBe(true);
   });
 
   it('normalizes numeric element values before writing inspector changes', () => {

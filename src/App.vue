@@ -31,6 +31,7 @@ import {
   getSelectionItems,
   hasElementGeometryChanged,
   hasElementPositionChanges,
+  hasFlowContentChanged,
   hasSignificantPanMovement,
   isEditingFieldTag,
   isSelected,
@@ -779,8 +780,13 @@ function finishPointerInteraction(pointerId?: number, hoverPoint?: Point) {
 
 function deleteSelection() {
   if (!state.selection) return;
-  recordHistory();
   const next = deleteSelectionFromFlow(state.elements, state.connections, state.selection);
+  if (!hasFlowContentChanged(state, next)) {
+    state.selection = next.selection;
+    draw();
+    return;
+  }
+  recordHistory();
   state.elements = next.elements;
   state.connections = next.connections;
   state.selection = next.selection;

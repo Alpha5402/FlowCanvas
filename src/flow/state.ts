@@ -48,6 +48,17 @@ export function deleteSelectionFromFlow(
   };
 }
 
+export function hasFlowContentChanged(
+  previous: Pick<FlowSnapshot, 'elements' | 'connections'>,
+  next: Pick<FlowSnapshot, 'elements' | 'connections'>,
+): boolean {
+  if (previous.elements.length !== next.elements.length || previous.connections.length !== next.connections.length) return true;
+  return (
+    previous.elements.some((element, index) => element.id !== next.elements[index]?.id) ||
+    previous.connections.some((connection, index) => connection.id !== next.connections[index]?.id)
+  );
+}
+
 export function getExportContent(
   elements: FlowElement[],
   connections: Connection[],
