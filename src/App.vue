@@ -703,7 +703,14 @@ function canvasToPngBlob(canvas: HTMLCanvasElement) {
   });
 }
 
-async function downloadImage() {
+function releasePointerTriggeredControlFocus(event?: MouseEvent) {
+  if (event && event.detail > 0 && event.currentTarget instanceof HTMLElement) {
+    event.currentTarget.blur();
+  }
+}
+
+async function downloadImage(event?: MouseEvent) {
+  releasePointerTriggeredControlFocus(event);
   if (exportBusy.value) return;
   exportBusy.value = true;
   try {
@@ -731,7 +738,8 @@ async function downloadImage() {
   }
 }
 
-async function copyImage() {
+async function copyImage(event?: MouseEvent) {
+  releasePointerTriggeredControlFocus(event);
   if (exportBusy.value) return;
   exportBusy.value = true;
   try {
@@ -1175,10 +1183,10 @@ onBeforeUnmount(() => {
       <header class="inspector-header">
         <h1>FlowCanvas</h1>
         <div class="export-actions" aria-label="Image export" :aria-busy="exportBusy">
-          <button class="tool-action" type="button" :disabled="exportBusy" @click="copyImage">
+          <button class="tool-action" type="button" :disabled="exportBusy" @click="copyImage($event)">
             Copy image
           </button>
-          <button class="tool-action" type="button" :disabled="exportBusy" @click="downloadImage">
+          <button class="tool-action" type="button" :disabled="exportBusy" @click="downloadImage($event)">
             Download image
           </button>
         </div>
