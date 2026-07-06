@@ -330,13 +330,12 @@ function onPointerDown(event: PointerEvent) {
     return;
   }
 
-  if (!multiSelect) state.selection = null;
   state.mode = 'panning-canvas';
   pan.value = {
     startPoint: screenPoint,
     startViewport: { ...state.viewport },
     moved: false,
-    preserveSelection: false,
+    preserveSelection: multiSelect,
   };
   canvas.setPointerCapture(event.pointerId);
   clearHover();
@@ -439,6 +438,9 @@ function onPointerUp(event: PointerEvent) {
   }
 
   if (state.mode === 'panning-canvas' && pan.value) {
+    if (!pan.value.preserveSelection && !pan.value.moved) {
+      state.selection = null;
+    }
     finishPointerInteraction(event.pointerId);
     return;
   }
@@ -475,6 +477,9 @@ function onMouseUp(event: MouseEvent) {
   }
 
   if (state.mode === 'panning-canvas' && pan.value) {
+    if (!pan.value.preserveSelection && !pan.value.moved) {
+      state.selection = null;
+    }
     finishPointerInteraction();
   }
 }
