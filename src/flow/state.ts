@@ -93,6 +93,15 @@ export function applyElementSizeMode(
   return true;
 }
 
+export function createFixedResizeBase(
+  element: FlowElement,
+  measuredSize?: Pick<FlowElement, 'width' | 'height'>,
+): FlowElement {
+  const base = { ...element };
+  applyElementSizeMode(base, 'fixed', measuredSize);
+  return base;
+}
+
 export function pushHistory(history: HistoryState, snapshot: FlowSnapshot) {
   history.past.push(cloneSnapshot(snapshot));
   history.future = [];

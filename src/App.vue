@@ -24,6 +24,7 @@ import { renderFlow } from './flow/render';
 import {
   applyElementSizeMode,
   cloneSelection,
+  createFixedResizeBase,
   deleteSelectionFromFlow,
   getSelectionItems,
   isSelected,
@@ -128,6 +129,7 @@ const resize = ref<{
   handle: ResizeHandle;
   startPoint: Point;
   original: FlowElement;
+  base: FlowElement;
   startSnapshot: FlowSnapshot;
   moved: boolean;
 } | null>(null);
@@ -297,12 +299,14 @@ function onPointerDown(event: PointerEvent) {
   const resizeHandle = resizeHit?.handle ?? hitTestResizeHandle(point, resizeTarget, context);
   if (resizeTarget && resizeHandle) {
     state.selection = { type: 'element', id: resizeTarget.id };
-    if (resizeTarget.sizeMode === 'fit-content') resizeTarget.sizeMode = 'fixed';
+    const original = cloneElement(resizeTarget);
+    const base = createFixedResizeBase(resizeTarget, getElementBox(resizeTarget, context));
     resize.value = {
       id: resizeTarget.id,
       handle: resizeHandle,
       startPoint: point,
-      original: cloneElement(resizeTarget),
+      original,
+      base,
       startSnapshot: snapshot(),
       moved: false,
     };
@@ -394,7 +398,7 @@ function onPointerMove(event: PointerEvent) {
     if (!element) return;
     const deltaX = point.x - resize.value.startPoint.x;
     const deltaY = point.y - resize.value.startPoint.y;
-    const next = resizeElementBox(resize.value.original, resize.value.handle, deltaX, deltaY);
+    const next = resizeElementBox(resize.value.base, resize.value.handle, deltaX, deltaY);
     element.x = next.x;
     element.y = next.y;
     element.width = next.width;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Connection, FlowElement } from '../types/flow';
-import { applyElementSizeMode, cloneSnapshot, isSelected, toggleSelection } from './state';
+import { applyElementSizeMode, cloneSnapshot, createFixedResizeBase, isSelected, toggleSelection } from './state';
 
 const element: FlowElement = {
   id: 'element-a',
@@ -83,5 +83,13 @@ describe('state', () => {
     expect(applyElementSizeMode(next, 'fixed', { width: 200, height: 80 })).toBe(false);
     expect(next.width).toBe(120);
     expect(next.height).toBe(64);
+  });
+
+  it('creates a fixed resize baseline without mutating fit-content elements', () => {
+    const original = { ...element, sizeMode: 'fit-content' as const, width: 20, height: 20 };
+    const base = createFixedResizeBase(original, { width: 148, height: 52 });
+
+    expect(base).toEqual(expect.objectContaining({ sizeMode: 'fixed', width: 148, height: 52 }));
+    expect(original).toEqual(expect.objectContaining({ sizeMode: 'fit-content', width: 20, height: 20 }));
   });
 });
