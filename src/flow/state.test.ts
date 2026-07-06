@@ -11,6 +11,7 @@ import {
   getSharedValue,
   hasElementGeometryChanged,
   hasElementPositionChanges,
+  hasSignificantPanMovement,
   isSelected,
   normalizeHexColorInput,
   normalizeConnectionNumber,
@@ -275,6 +276,13 @@ describe('state', () => {
     expect(hasElementGeometryChanged(element, { ...element })).toBe(false);
     expect(hasElementGeometryChanged({ ...element, width: element.width + 1 }, element)).toBe(true);
     expect(hasElementGeometryChanged({ ...element, sizeMode: 'fit-content' }, element)).toBe(true);
+  });
+
+  it('detects significant pan movement only after the click tolerance', () => {
+    const start = { x: 10, y: 10 };
+
+    expect(hasSignificantPanMovement(start, { x: 13, y: 10 })).toBe(false);
+    expect(hasSignificantPanMovement(start, { x: 14, y: 10 })).toBe(true);
   });
 
   it('clears every hover state after an interaction finishes', () => {

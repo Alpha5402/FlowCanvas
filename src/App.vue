@@ -31,6 +31,7 @@ import {
   getSelectionItems,
   hasElementGeometryChanged,
   hasElementPositionChanges,
+  hasSignificantPanMovement,
   isSelected,
   normalizeHexColorInput,
   normalizeConnectionNumber,
@@ -389,7 +390,7 @@ function onPointerMove(event: PointerEvent) {
   if (state.mode === 'panning-canvas' && pan.value) {
     state.viewport.x = pan.value.startViewport.x + screenPoint.x - pan.value.startPoint.x;
     state.viewport.y = pan.value.startViewport.y + screenPoint.y - pan.value.startPoint.y;
-    pan.value.moved = Math.hypot(screenPoint.x - pan.value.startPoint.x, screenPoint.y - pan.value.startPoint.y) > 3;
+    pan.value.moved = hasSignificantPanMovement(pan.value.startPoint, screenPoint);
     updateCursor('grabbing');
     draw();
     return;

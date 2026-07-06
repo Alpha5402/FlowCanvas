@@ -1,4 +1,4 @@
-import type { Anchor, Connection, ConnectionEndpoint, EditorState, FlowElement, Selection } from '../types/flow';
+import type { Anchor, Connection, ConnectionEndpoint, EditorState, FlowElement, Point, Selection } from '../types/flow';
 
 export interface FlowSnapshot {
   elements: FlowElement[];
@@ -10,6 +10,8 @@ export interface HistoryState {
   past: FlowSnapshot[];
   future: FlowSnapshot[];
 }
+
+const PAN_MOVE_THRESHOLD = 3;
 
 export function cloneSnapshot(snapshot: FlowSnapshot): FlowSnapshot {
   return {
@@ -208,6 +210,10 @@ export function hasElementGeometryChanged(element: FlowElement, original: FlowEl
     element.height !== original.height ||
     element.sizeMode !== original.sizeMode
   );
+}
+
+export function hasSignificantPanMovement(start: Point, end: Point): boolean {
+  return Math.hypot(end.x - start.x, end.y - start.y) > PAN_MOVE_THRESHOLD;
 }
 
 export function clearHoverState(
