@@ -264,6 +264,10 @@ function isMultiSelectEvent(event: PointerEvent | MouseEvent) {
   return event.metaKey || event.ctrlKey;
 }
 
+function isPrimaryButtonEvent(event: PointerEvent | MouseEvent) {
+  return event.button === 0;
+}
+
 function onPointerDown(event: PointerEvent) {
   clearExportStatus();
   const canvas = canvasRef.value;
@@ -275,12 +279,13 @@ function onPointerDown(event: PointerEvent) {
   const elementControlsHidden = shouldHideElementControls(state.selection);
 
   if (state.mode === 'creating-connection' && state.pendingConnectionSource && state.previewConnection) {
+    if (!isPrimaryButtonEvent(event)) return;
     completeConnectionCreation(point, context);
     finishPointerInteraction(undefined, point);
     return;
   }
 
-  if ((isSpacePressed.value && event.button === 0) || event.button === 1) {
+  if ((isSpacePressed.value && isPrimaryButtonEvent(event)) || event.button === 1) {
     state.mode = 'panning-canvas';
     pan.value = {
       startPoint: screenPoint,
@@ -293,7 +298,7 @@ function onPointerDown(event: PointerEvent) {
     return;
   }
 
-  if (event.button !== 0) return;
+  if (!isPrimaryButtonEvent(event)) return;
 
   const anchor = elementControlsHidden ? null : hitTestAnchorHandle(point, state.elements, context);
   if (anchor) {
@@ -536,6 +541,7 @@ function onMouseUp(event: MouseEvent) {
   });
 
   if (state.mode === 'creating-connection' && state.pendingConnectionSource && state.previewConnection) {
+    if (!isPrimaryButtonEvent(event)) return;
     completeConnectionCreation(point, context);
     finishPointerInteraction(undefined, point);
     return;
@@ -568,6 +574,7 @@ function onMouseUp(event: MouseEvent) {
 
 function onMouseDown(event: MouseEvent) {
   if (state.mode !== 'creating-connection' || !state.pendingConnectionSource || !state.previewConnection) return;
+  if (!isPrimaryButtonEvent(event)) return;
   if (Date.now() - connectionStartedAt.value < 120) return;
   const canvas = canvasRef.value;
   const context = canvas?.getContext('2d') ?? undefined;
