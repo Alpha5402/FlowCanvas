@@ -506,9 +506,9 @@ function completeConnectionCreation(point: Point, context?: CanvasRenderingConte
     return;
   }
 
-      const targetSide = inferTargetSide(source.side);
-      const next = createElement(point.x, point.y);
-      next.text = 'New Node';
+  const targetSide = inferTargetSide(source.side);
+  const next = createElement(point.x, point.y);
+  next.text = 'New Node';
   const box = getElementBox(next, context);
   const anchor = findAnchor([next], { elementId: next.id, side: targetSide }, context);
   next.x += point.x - (anchor?.x ?? box.x);
@@ -736,12 +736,14 @@ function deleteSelection() {
 }
 
 function updateElement<K extends keyof FlowElement>(element: FlowElement, key: K, value: FlowElement[K]) {
+  if (Object.is(element[key], value)) return;
   recordHistory();
   element[key] = value;
   draw();
 }
 
 function updateConnection<K extends keyof Connection>(connection: Connection, key: K, value: Connection[K]) {
+  if (Object.is(connection[key], value)) return;
   recordHistory();
   connection[key] = value;
   draw();
@@ -777,6 +779,7 @@ function batchConnectionValue<K extends keyof Connection>(key: K): Connection[K]
 
 function updateSelectedElements<K extends keyof FlowElement>(key: K, value: FlowElement[K]) {
   if (selectedElements.value.length === 0) return;
+  if (selectedElements.value.every((element) => Object.is(element[key], value))) return;
   recordHistory();
   for (const element of selectedElements.value) {
     element[key] = value;
@@ -786,6 +789,7 @@ function updateSelectedElements<K extends keyof FlowElement>(key: K, value: Flow
 
 function updateSelectedConnections<K extends keyof Connection>(key: K, value: Connection[K]) {
   if (selectedConnections.value.length === 0) return;
+  if (selectedConnections.value.every((connection) => Object.is(connection[key], value))) return;
   recordHistory();
   for (const connection of selectedConnections.value) {
     connection[key] = value;
