@@ -500,6 +500,22 @@ function onPointerUp(event: PointerEvent) {
   finishPointerInteraction(event.pointerId, point);
 }
 
+function onPointerCancel(event: PointerEvent) {
+  if (state.mode === 'resizing-element' && resize.value) {
+    const element = state.elements.find((item) => item.id === resize.value?.id);
+    if (element) Object.assign(element, cloneElement(resize.value.original));
+  }
+  if (state.mode === 'dragging-element' && drag.value) {
+    restoreElementPositions(state.elements, drag.value.originals);
+  }
+  if (state.mode === 'panning-canvas' && pan.value) {
+    state.viewport.x = pan.value.startViewport.x;
+    state.viewport.y = pan.value.startViewport.y;
+    state.viewport.zoom = pan.value.startViewport.zoom;
+  }
+  finishPointerInteraction(event.pointerId);
+}
+
 function onMouseUp(event: MouseEvent) {
   const canvas = canvasRef.value;
   const context = canvas?.getContext('2d') ?? undefined;
@@ -1003,7 +1019,7 @@ onMounted(() => {
   window.addEventListener('keyup', onKeyUp);
   window.addEventListener('blur', onWindowBlur);
   window.addEventListener('pointerup', onPointerUp);
-  window.addEventListener('pointercancel', onPointerUp);
+  window.addEventListener('pointercancel', onPointerCancel);
   window.addEventListener('mousedown', onMouseDown);
   window.addEventListener('mouseup', onMouseUp);
 });
@@ -1014,7 +1030,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('keyup', onKeyUp);
   window.removeEventListener('blur', onWindowBlur);
   window.removeEventListener('pointerup', onPointerUp);
-  window.removeEventListener('pointercancel', onPointerUp);
+  window.removeEventListener('pointercancel', onPointerCancel);
   window.removeEventListener('mousedown', onMouseDown);
   window.removeEventListener('mouseup', onMouseUp);
 });
@@ -1076,7 +1092,7 @@ onBeforeUnmount(() => {
         @pointerdown="onPointerDown"
         @pointermove="onPointerMove"
         @pointerup="onPointerUp"
-        @pointercancel="onPointerUp"
+        @pointercancel="onPointerCancel"
         @wheel="onWheel"
         @dblclick="onCanvasDoubleClick"
       />
