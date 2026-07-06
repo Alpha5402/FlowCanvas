@@ -90,7 +90,6 @@ const history = reactive<HistoryState>({
 });
 
 const selectedItems = computed(() => getSelectionItems(state.selection));
-const selectedCount = computed(() => selectedItems.value.length);
 const selectedElement = computed(() => {
   const items = selectedItems.value;
   if (items.length !== 1 || items[0].type !== 'element') return null;
@@ -113,6 +112,7 @@ const selectedConnections = computed(() =>
     .map((item) => state.connections.find((connection) => connection.id === item.id))
     .filter((connection): connection is Connection => Boolean(connection)),
 );
+const selectedCount = computed(() => selectedElements.value.length + selectedConnections.value.length);
 const hasMixedSelection = computed(() => selectedElements.value.length > 0 && selectedConnections.value.length > 0);
 const showBatchElementForm = computed(() => selectedElements.value.length > 1 && selectedConnections.value.length === 0);
 const showBatchConnectionForm = computed(() => selectedConnections.value.length > 1 && selectedElements.value.length === 0);
