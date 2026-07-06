@@ -30,8 +30,9 @@ export interface RenderOptions {
   hoverConnectionId: string | null;
   hoverAnchor: ConnectionEndpoint | null;
   hoverResizeHandle: ResizeHandle | null;
-  previewConnection: { source: Anchor; pointer: { x: number; y: number }; target: Anchor | null } | null;
+  previewConnection: { source: Anchor; pointer: { x: number; y: number }; target: Anchor | null; hiddenConnectionId?: string } | null;
   showGrid?: boolean;
+  pixelRatio?: number;
 }
 
 export function renderFlow(
@@ -44,10 +45,11 @@ export function renderFlow(
   viewport: ViewportState,
   options: RenderOptions,
 ) {
+  const pixelRatio = getRenderPixelRatio(options);
   context.clearRect(0, 0, canvas.width, canvas.height);
   context.save();
-  context.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
-  drawBackground(context, canvas, viewport, options.showGrid ?? true);
+  context.scale(pixelRatio, pixelRatio);
+  drawBackground(context, canvas, viewport, options.showGrid ?? true, pixelRatio);
   context.translate(viewport.x, viewport.y);
   context.scale(viewport.zoom, viewport.zoom);
   const measurer: Measurer = context;
@@ -55,6 +57,7 @@ export function renderFlow(
   const labelBackgroundColor = getConnectionTextBackground(options.showGrid ?? true);
 
   connections.forEach((connection) => {
+    if (!shouldRenderConnection(connection, options.previewConnection)) return;
     const selected = isSelected(selection, 'connection', connection.id);
     const hovered = options.hoverConnectionId === connection.id;
     drawConnection(context, connection, elements, selected, hovered, measurer, labelBackgroundColor);
@@ -90,9 +93,10 @@ function drawBackground(
   canvas: HTMLCanvasElement,
   viewport: ViewportState,
   showGrid: boolean,
+  pixelRatio: number,
 ) {
-  const width = canvas.width / (window.devicePixelRatio || 1);
-  const height = canvas.height / (window.devicePixelRatio || 1);
+  const width = canvas.width / pixelRatio;
+  const height = canvas.height / pixelRatio;
   context.fillStyle = showGrid ? '#f5f7fb' : '#ffffff';
   context.fillRect(0, 0, width, height);
   if (!showGrid) return;
@@ -115,6 +119,17 @@ function drawBackground(
     context.lineTo(width, y);
     context.stroke();
   }
+}
+
+export function getRenderPixelRatio(options: Pick<RenderOptions, 'pixelRatio'>): number {
+  return Math.max(1, options.pixelRatio ?? window.devicePixelRatio ?? 1);
+}
+
+export function shouldRenderConnection(
+  connection: Pick<Connection, 'id'>,
+  previewConnection: Pick<NonNullable<RenderOptions['previewConnection']>, 'hiddenConnectionId'> | null,
+): boolean {
+  return previewConnection?.hiddenConnectionId !== connection.id;
 }
 
 function drawElement(context: CanvasRenderingContext2D, element: FlowElement, selected: boolean, hovered: boolean, measurer: Measurer) {

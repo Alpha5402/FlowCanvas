@@ -193,6 +193,16 @@ export function toggleSelection(
   return { type: 'multi', items: next };
 }
 
+export function selectAllItems(elements: FlowElement[], connections: Connection[]): Selection {
+  const items = [
+    ...elements.map((element) => ({ type: 'element' as const, id: element.id })),
+    ...connections.map((connection) => ({ type: 'connection' as const, id: connection.id })),
+  ];
+  if (items.length === 0) return null;
+  if (items.length === 1) return { ...items[0] };
+  return { type: 'multi', items };
+}
+
 export function applyElementSizeMode(
   element: FlowElement,
   sizeMode: FlowElement['sizeMode'],

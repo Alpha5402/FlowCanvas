@@ -1,4 +1,4 @@
-import type { Anchor, AnchorSide, Connection, FlowElement, Point, ResizeHandle } from '../types/flow';
+import type { Anchor, AnchorSide, Connection, ConnectionEnd, FlowElement, Point, ResizeHandle } from '../types/flow';
 import {
   distance,
   distanceToConnection,
@@ -122,6 +122,19 @@ export function hitTestConnection(
     if (distanceToConnection(point, path) <= getConnectionHitDistance(connections[index])) return connections[index];
   }
   return null;
+}
+
+export function inferConnectionDragEnd(
+  point: Point,
+  connection: Connection,
+  elements: FlowElement[],
+  measurer?: Measurer,
+): ConnectionEnd | null {
+  const path = getConnectionPath(connection, elements, measurer);
+  if (!path) return null;
+  const sourceDistance = distance(point, path.sourceAnchor);
+  const targetDistance = distance(point, path.targetAnchor);
+  return sourceDistance <= targetDistance ? 'source' : 'target';
 }
 
 export function getConnectionHitDistance(connection: Pick<Connection, 'lineWidth'>): number {

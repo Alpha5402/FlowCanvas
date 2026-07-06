@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import type { Connection, FlowElement } from '../types/flow';
 import { getConnectionLabelBox, getConnectionPath } from './geometry';
-import { getConnectionHitDistance, hitTestCanvasObject, hitTestConnection, hitTestElementAnchorOrEdge } from './hitTesting';
+import {
+  getConnectionHitDistance,
+  hitTestCanvasObject,
+  hitTestConnection,
+  hitTestElementAnchorOrEdge,
+  inferConnectionDragEnd,
+} from './hitTesting';
 
 const element: FlowElement = {
   id: 'a',
@@ -56,6 +62,13 @@ describe('hitTesting', () => {
         measurer,
       )?.id,
     ).toBe('c');
+  });
+
+  it('infers which connection end should move from the drag start position', () => {
+    const elements = [element, { ...element, id: 'b', x: 260, y: 160 }];
+
+    expect(inferConnectionDragEnd({ x: 140, y: 50 }, connection, elements, measurer)).toBe('source');
+    expect(inferConnectionDragEnd({ x: 250, y: 170 }, connection, elements, measurer)).toBe('target');
   });
 
   it('prioritizes elements over connections to match the render stack', () => {

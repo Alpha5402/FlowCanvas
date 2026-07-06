@@ -14,9 +14,11 @@ import {
 import {
   hitTestAnchorHandle,
   hitTestCanvasObject,
+  hitTestConnection,
   hitTestElementAnchorOrEdge,
   hitTestResizeHandle,
   hitTestResizeHandleOnElements,
+  inferConnectionDragEnd,
 } from './flow/hitTesting';
 import { renderFlow } from './flow/render';
 import {
@@ -45,13 +47,14 @@ import {
   redo,
   restoreElementPositions,
   resolvePreviewTarget,
+  selectAllItems,
   shouldHideElementControls,
   toggleSelection,
   undo,
   type FlowSnapshot,
   type HistoryState,
 } from './flow/state';
-import type { Anchor, Connection, EditorState, FlowElement, Point, ResizeHandle } from './types/flow';
+import type { Connection, ConnectionEnd, EditorState, FlowElement, Point, ResizeHandle } from './types/flow';
 
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 const stageRef = ref<HTMLElement | null>(null);
@@ -144,6 +147,16 @@ const resize = ref<{
   moved: boolean;
 } | null>(null);
 
+const endpointDrag = ref<{
+  connectionId: string;
+  end: ConnectionEnd;
+  startPoint: Point;
+  original: Connection;
+  startSnapshot: FlowSnapshot;
+  moved: boolean;
+  active: boolean;
+} | null>(null);
+
 const pan = ref<{
   startPoint: Point;
   startViewport: { x: number; y: number; zoom: number };
@@ -156,6 +169,7 @@ const connectionStartedAt = ref(0);
 const connectionStartPoint = ref<Point | null>(null);
 const canvasCursor = ref('default');
 const EXPORT_FONT = '14px Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+const EXPORT_PIXEL_RATIO = 3;
 const SIGNIFICANT_CONNECTION_DRAG_DISTANCE = 10;
 
 function snapshot(): FlowSnapshot {
@@ -170,6 +184,7 @@ function applySnapshot(next: FlowSnapshot) {
   clearExportStatus();
   drag.value = null;
   resize.value = null;
+  endpointDrag.value = null;
   pan.value = null;
   endTextEdit();
   endFieldEdit();
@@ -265,6 +280,39 @@ function addElementAtViewportCenter() {
   });
 }
 
+function selectAllFlowItems() {
+  state.selection = selectAllItems(state.elements, state.connections);
+  draw();
+}
+
+function beginConnectionEndpointDrag(
+  connection: Connection,
+  end: ConnectionEnd,
+  point: Point,
+  context: CanvasRenderingContext2D | undefined,
+  canvas: HTMLCanvasElement,
+  pointerId: number,
+) {
+  const otherEnd = end === 'source' ? 'target' : 'source';
+  const otherAnchor = findAnchor(state.elements, connection[otherEnd], context);
+  endpointDrag.value = {
+    connectionId: connection.id,
+    end,
+    startPoint: point,
+    original: cloneConnection(connection),
+    startSnapshot: snapshot(),
+    moved: false,
+    active: false,
+  };
+  state.mode = 'idle';
+  state.selection = { type: 'connection', id: connection.id };
+  state.pendingConnectionSource = otherAnchor ? { elementId: otherAnchor.elementId, side: otherAnchor.side } : null;
+  state.previewConnection = null;
+  canvas.setPointerCapture(pointerId);
+  updateCursor('pointer');
+  draw();
+}
+
 function isMultiSelectEvent(event: PointerEvent | MouseEvent) {
   return event.metaKey || event.ctrlKey;
 }
@@ -309,6 +357,24 @@ function onPointerDown(event: PointerEvent) {
   if (!isPrimaryButtonEvent(event)) return;
   event.preventDefault();
   clearExportStatus();
+
+  const activeConnectionHit = hitTestConnection(point, state.connections, state.elements, context);
+  const activeConnection =
+    activeConnectionHit &&
+    !multiSelect &&
+    (
+      (state.selection?.type === 'connection' && state.selection.id === activeConnectionHit.id) ||
+      state.hoverConnectionId === activeConnectionHit.id
+    )
+      ? activeConnectionHit
+      : null;
+  if (activeConnection) {
+    const end = inferConnectionDragEnd(point, activeConnection, state.elements, context);
+    if (end) {
+      beginConnectionEndpointDrag(activeConnection, end, point, context, canvas, event.pointerId);
+      return;
+    }
+  }
 
   const anchor = elementControlsHidden ? null : hitTestAnchorHandle(point, state.elements, context);
   if (anchor) {
@@ -430,6 +496,53 @@ function onPointerMove(event: PointerEvent) {
     return;
   }
 
+  if (endpointDrag.value) {
+    if (!endpointDrag.value.active) {
+      endpointDrag.value.moved = hasSignificantPointerMovement(
+        endpointDrag.value.startPoint,
+        point,
+        state.viewport.zoom,
+        SIGNIFICANT_CONNECTION_DRAG_DISTANCE,
+      );
+      if (!endpointDrag.value.moved) {
+        updateCursor('pointer');
+        return;
+      }
+      const original = endpointDrag.value.original;
+      const lockedEndpoint = endpointDrag.value.end === 'source' ? original.target : original.source;
+      const otherAnchor = findAnchor(state.elements, lockedEndpoint, context);
+      if (!otherAnchor) {
+        endpointDrag.value = null;
+        return;
+      }
+      state.mode = 'dragging-connection-endpoint';
+      state.pendingConnectionSource = { elementId: otherAnchor.elementId, side: otherAnchor.side };
+      state.previewConnection = {
+        source: otherAnchor,
+        pointer: point,
+        target: null,
+        hiddenConnectionId: endpointDrag.value.connectionId,
+      };
+      endpointDrag.value.active = true;
+    }
+  }
+
+  if (state.mode === 'dragging-connection-endpoint' && endpointDrag.value?.active && state.previewConnection) {
+    const original = endpointDrag.value.original;
+    const lockedEndpoint = endpointDrag.value.end === 'source' ? original.target : original.source;
+    const target = hitTestElementAnchorOrEdge(point, state.elements, lockedEndpoint.elementId, context);
+    state.previewConnection.pointer = target
+      ? point
+      : snapPreviewPoint(state.previewConnection.source, point, state.viewport.zoom, state.elements, context);
+    state.previewConnection.target = target;
+    state.hoverAnchor = target ? { elementId: target.elementId, side: target.side } : null;
+    state.hoverElementId = target?.elementId ?? null;
+    endpointDrag.value.moved = true;
+    updateCursor('pointer');
+    draw();
+    return;
+  }
+
   if (state.mode === 'resizing-element' && resize.value) {
     const element = state.elements.find((item) => item.id === resize.value?.id);
     if (!element) return;
@@ -486,6 +599,23 @@ function onPointerUp(event: PointerEvent) {
   const point = worldPoint(event);
   const context = canvas?.getContext('2d') ?? undefined;
 
+  if (endpointDrag.value && !endpointDrag.value.active) {
+    try {
+      canvas?.releasePointerCapture(event.pointerId);
+    } catch {
+      // Pointer capture may already be gone if the pointer leaves the window.
+    }
+    const connectionId = endpointDrag.value.connectionId;
+    endpointDrag.value = null;
+    state.selection = { type: 'connection', id: connectionId };
+    state.mode = 'idle';
+    state.pendingConnectionSource = null;
+    state.previewConnection = null;
+    refreshHover(point);
+    draw();
+    return;
+  }
+
   if (state.mode === 'creating-connection' && state.pendingConnectionSource && state.previewConnection) {
     if (!isPrimaryButtonEvent(event)) return;
     completeConnectionCreation(point, context);
@@ -498,6 +628,12 @@ function onPointerUp(event: PointerEvent) {
     if (resize.value.moved && element && hasElementGeometryChanged(element, resize.value.original)) {
       pushHistory(history, resize.value.startSnapshot);
     }
+    finishPointerInteraction(event.pointerId, point);
+    return;
+  }
+
+  if (state.mode === 'dragging-connection-endpoint' && endpointDrag.value) {
+    completeConnectionEndpointDrag(point, context);
     finishPointerInteraction(event.pointerId, point);
     return;
   }
@@ -532,6 +668,10 @@ function cancelActiveInteraction(pointerId?: number) {
   }
   if (state.mode === 'dragging-element' && drag.value) {
     restoreElementPositions(state.elements, drag.value.originals);
+  }
+  if (state.mode === 'dragging-connection-endpoint' && endpointDrag.value) {
+    const connection = state.connections.find((item) => item.id === endpointDrag.value?.connectionId);
+    if (connection) Object.assign(connection, cloneConnection(endpointDrag.value.original));
   }
   if (state.mode === 'panning-canvas' && pan.value) {
     state.viewport.x = pan.value.startViewport.x;
@@ -640,6 +780,43 @@ function completeConnectionCreation(point: Point, context?: CanvasRenderingConte
   nextTick(focusElementText);
 }
 
+function completeConnectionEndpointDrag(point: Point, context?: CanvasRenderingContext2D) {
+  if (!endpointDrag.value) return;
+  const connection = state.connections.find((item) => item.id === endpointDrag.value?.connectionId);
+  if (!connection) return;
+  const original = endpointDrag.value.original;
+  if (!endpointDrag.value.active || !endpointDrag.value.moved) {
+    Object.assign(connection, cloneConnection(original));
+    state.selection = { type: 'connection', id: connection.id };
+    return;
+  }
+  const lockedEndpoint = endpointDrag.value.end === 'source' ? original.target : original.source;
+  const target = resolvePreviewTarget(
+    hitTestElementAnchorOrEdge(point, state.elements, lockedEndpoint.elementId, context),
+    state.previewConnection?.target ?? null,
+  );
+  if (!target) {
+    Object.assign(connection, cloneConnection(original));
+    return;
+  }
+
+  if (endpointDrag.value.end === 'source') {
+    connection.source = { elementId: target.elementId, side: target.side };
+  } else {
+    connection.target = { elementId: target.elementId, side: target.side };
+  }
+
+  const changed =
+    connection.source.elementId !== original.source.elementId ||
+    connection.source.side !== original.source.side ||
+    connection.target.elementId !== original.target.elementId ||
+    connection.target.side !== original.target.side;
+  if (endpointDrag.value.moved && changed) {
+    pushHistory(history, endpointDrag.value.startSnapshot);
+  }
+  state.selection = { type: 'connection', id: connection.id };
+}
+
 function onWheel(event: WheelEvent) {
   event.preventDefault();
   clearExportStatus();
@@ -681,7 +858,7 @@ function createExportCanvas() {
   const padding = 36;
   const width = Math.max(1, Math.ceil(bounds.maxX - bounds.minX + padding * 2));
   const height = Math.max(1, Math.ceil(bounds.maxY - bounds.minY + padding * 2));
-  const pixelRatio = window.devicePixelRatio || 1;
+  const pixelRatio = Math.max(EXPORT_PIXEL_RATIO, window.devicePixelRatio || 1);
   const exportCanvas = document.createElement('canvas');
   exportCanvas.width = Math.ceil(width * pixelRatio);
   exportCanvas.height = Math.ceil(height * pixelRatio);
@@ -710,6 +887,7 @@ function createExportCanvas() {
       hoverResizeHandle: null,
       previewConnection: null,
       showGrid: false,
+      pixelRatio,
     },
   );
 
@@ -1074,6 +1252,12 @@ function onKeyDown(event: KeyboardEvent) {
     return;
   }
 
+  if (!isInteractiveControl && commandKey && event.key.toLowerCase() === 'a') {
+    event.preventDefault();
+    selectAllFlowItems();
+    return;
+  }
+
   if (!isInteractiveControl && !commandKey && state.mode === 'idle' && event.key.toLowerCase() === 'n') {
     event.preventDefault();
     addElementAtViewportCenter();
@@ -1118,17 +1302,25 @@ function refreshHover(point: Point) {
   const canvas = canvasRef.value;
   const context = canvas?.getContext('2d') ?? undefined;
   const elementControlsHidden = shouldHideElementControls(state.selection);
-  const anchor = elementControlsHidden ? null : hitTestAnchorHandle(point, state.elements, context);
-  const resizeHit = elementControlsHidden ? null : hitTestResizeHandleOnElements(point, state.elements, context);
+  const selectedConnectionHit = state.selection?.type === 'connection'
+    ? hitTestConnection(point, state.connections, state.elements, context)
+    : null;
+  const prioritizedConnection = selectedConnectionHit?.id === (state.selection?.type === 'connection' ? state.selection.id : null)
+    ? selectedConnectionHit
+    : null;
+  const anchor = elementControlsHidden || prioritizedConnection ? null : hitTestAnchorHandle(point, state.elements, context);
+  const resizeHit = elementControlsHidden || prioritizedConnection ? null : hitTestResizeHandleOnElements(point, state.elements, context);
   const resizeHandle = resizeHit?.handle ?? null;
-  const bodyHit = hitTestCanvasObject(point, state.elements, state.connections, context);
+  const bodyHit = prioritizedConnection ? null : hitTestCanvasObject(point, state.elements, state.connections, context);
   const element = bodyHit?.type === 'element' ? bodyHit.item : null;
-  const connection = bodyHit?.type === 'connection' ? bodyHit.item : null;
+  const connection = prioritizedConnection ?? (bodyHit?.type === 'connection' ? bodyHit.item : null);
 
   state.hoverAnchor = anchor ? { elementId: anchor.elementId, side: anchor.side } : null;
   state.hoverResizeHandle = !anchor ? resizeHandle : null;
   state.hoverConnectionId = !anchor && !resizeHandle ? connection?.id ?? null : null;
-  state.hoverElementId = resizeHit?.element.id ?? (!anchor && !connection ? element?.id ?? null : anchor?.elementId ?? null);
+  state.hoverElementId = prioritizedConnection
+    ? null
+    : resizeHit?.element.id ?? (!anchor && !connection ? element?.id ?? null : anchor?.elementId ?? null);
 
   if (isSpacePressed.value) updateCursor('grab');
   else if (anchor) updateCursor('pointer');

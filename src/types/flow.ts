@@ -5,6 +5,7 @@ export type LineType = 'solid' | 'dashed';
 export type ArrowType = 'none' | 'start' | 'end' | 'both';
 export type ConnectionTextPosition = 'above' | 'below' | 'middle';
 export type AnchorSide = 'top' | 'right' | 'bottom' | 'left';
+export type ConnectionEnd = 'source' | 'target';
 export type ResizeHandle =
   | 'top'
   | 'right'
@@ -19,6 +20,7 @@ export type EditorMode =
   | 'dragging-element'
   | 'resizing-element'
   | 'creating-connection'
+  | 'dragging-connection-endpoint'
   | 'panning-canvas'
   | 'editing-text';
 
@@ -97,6 +99,7 @@ export interface EditorState {
     source: Anchor;
     pointer: Point;
     target: Anchor | null;
+    hiddenConnectionId?: string;
   } | null;
   hoverElementId: string | null;
   hoverConnectionId: string | null;

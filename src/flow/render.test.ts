@@ -3,7 +3,9 @@ import {
   getConnectionStrokeWidth,
   getConnectionTextBackground,
   getElementStrokeWidth,
+  getRenderPixelRatio,
   shouldFillElement,
+  shouldRenderConnection,
   shouldDrawConnectionTextGap,
 } from './render';
 
@@ -20,6 +22,17 @@ describe('render', () => {
     expect(shouldFillElement('transparent')).toBe(false);
     expect(shouldFillElement(' TRANSPARENT ')).toBe(false);
     expect(shouldFillElement('#ffffff')).toBe(true);
+  });
+
+  it('uses explicit render pixel ratios for high-resolution exports', () => {
+    expect(getRenderPixelRatio({ pixelRatio: 3 })).toBe(3);
+    expect(getRenderPixelRatio({ pixelRatio: 0.5 })).toBe(1);
+  });
+
+  it('hides the original connection while a reconnect preview is active', () => {
+    expect(shouldRenderConnection({ id: 'connection-a' }, null)).toBe(true);
+    expect(shouldRenderConnection({ id: 'connection-a' }, { hiddenConnectionId: 'connection-b' })).toBe(true);
+    expect(shouldRenderConnection({ id: 'connection-a' }, { hiddenConnectionId: 'connection-a' })).toBe(false);
   });
 
   it('keeps connection hover and focus strokes visibly emphasized', () => {

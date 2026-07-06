@@ -23,6 +23,7 @@ import {
   normalizeElementNumber,
   resolvePreviewTarget,
   restoreElementPositions,
+  selectAllItems,
   shouldHideElementControls,
   toggleSelection,
 } from './state';
@@ -76,6 +77,18 @@ describe('state', () => {
     expect(isSelected(single, 'connection', 'connection-a')).toBe(true);
     expect(single).toEqual({ type: 'connection', id: 'connection-a' });
     expect(empty).toBeNull();
+  });
+
+  it('selects every flow item for select-all shortcuts', () => {
+    expect(selectAllItems([], [])).toBeNull();
+    expect(selectAllItems([element], [])).toEqual({ type: 'element', id: 'element-a' });
+    expect(selectAllItems([element], [connection])).toEqual({
+      type: 'multi',
+      items: [
+        { type: 'element', id: 'element-a' },
+        { type: 'connection', id: 'connection-a' },
+      ],
+    });
   });
 
   it('deep-clones connection endpoints and multi-selection items in snapshots', () => {
