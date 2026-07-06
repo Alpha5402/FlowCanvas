@@ -45,6 +45,13 @@ export interface ResizeResult {
   height: number;
 }
 
+export interface FlowBounds {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+}
+
 const FONT_SIZE = 14;
 const LINE_HEIGHT = 20;
 const SNAP_DISTANCE = 6;
@@ -402,6 +409,50 @@ export function getTextOffset(position: Connection['textPosition'], angle: numbe
 
 export function distance(a: Point, b: Point): number {
   return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+export function getFlowBounds(
+  elements: FlowElement[],
+  connections: Connection[],
+  measurer?: Measurer,
+): FlowBounds | null {
+  let minX = Number.POSITIVE_INFINITY;
+  let minY = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  let maxY = Number.NEGATIVE_INFINITY;
+
+  function includePoint(point: Point) {
+    minX = Math.min(minX, point.x);
+    minY = Math.min(minY, point.y);
+    maxX = Math.max(maxX, point.x);
+    maxY = Math.max(maxY, point.y);
+  }
+
+  for (const element of elements) {
+    const box = getElementBox(element, measurer);
+    includePoint({ x: box.x, y: box.y });
+    includePoint({ x: box.x + box.width, y: box.y + box.height });
+  }
+
+  for (const connection of connections) {
+    const path = getConnectionPath(connection, elements, measurer);
+    if (!path) continue;
+    for (const point of path.samplePoints) includePoint(point);
+    if (connection.text && measurer) {
+      const offset = getTextOffset(connection.textPosition, path.textAngle);
+      const textX = path.labelPoint.x + offset.x;
+      const textY = path.labelPoint.y + offset.y;
+      const metrics = measurer.measureText(connection.text);
+      includePoint({ x: textX - metrics.width / 2 - 8, y: textY - 10 });
+      includePoint({ x: textX + metrics.width / 2 + 8, y: textY + 10 });
+    }
+  }
+
+  if (!Number.isFinite(minX) || !Number.isFinite(minY) || !Number.isFinite(maxX) || !Number.isFinite(maxY)) {
+    return null;
+  }
+
+  return { minX, minY, maxX, maxY };
 }
 
 function sampleConnectionPath(

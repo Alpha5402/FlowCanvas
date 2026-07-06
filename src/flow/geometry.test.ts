@@ -6,6 +6,7 @@ import {
   getArrowAngle,
   getConnectionPath,
   getElementAnchors,
+  getFlowBounds,
   hasSignificantPointerMovement,
   inferTargetSide,
   measureFitContent,
@@ -136,6 +137,23 @@ describe('geometry', () => {
     expect(path?.sourceAnchor.side).toBe('right');
     expect(path?.targetAnchor.side).toBe('left');
     expect(path?.samplePoints.length).toBeGreaterThan(10);
+  });
+
+  it('calculates flow bounds from the provided export content', () => {
+    const elements = [
+      { ...baseElement, id: 'a', x: 0, y: 0 },
+      { ...baseElement, id: 'b', x: 260, y: 160 },
+    ];
+    const bounds = getFlowBounds(elements, [connection()], measurer);
+
+    expect(bounds).toEqual(expect.objectContaining({ minX: 0, minY: 0, maxX: 380, maxY: 220 }));
+  });
+
+  it('ignores connections whose endpoints are not in the provided bounds content', () => {
+    const elements = [{ ...baseElement, id: 'a', x: 0, y: 0 }];
+    const bounds = getFlowBounds(elements, [connection()], measurer);
+
+    expect(bounds).toEqual({ minX: 0, minY: 0, maxX: 120, maxY: 60 });
   });
 
   it('calculates arrow angles from terminal path segments', () => {
