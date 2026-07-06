@@ -915,6 +915,11 @@ function onKeyUp(event: KeyboardEvent) {
   }
 }
 
+function onWindowBlur() {
+  isSpacePressed.value = false;
+  if (state.mode === 'idle') updateCursor('default');
+}
+
 function onCanvasDoubleClick() {
   if (selectedElement.value) focusElementText();
 }
@@ -977,6 +982,7 @@ onMounted(() => {
   window.addEventListener('resize', resizeCanvas);
   window.addEventListener('keydown', onKeyDown);
   window.addEventListener('keyup', onKeyUp);
+  window.addEventListener('blur', onWindowBlur);
   window.addEventListener('pointerup', onPointerUp);
   window.addEventListener('mousedown', onMouseDown);
   window.addEventListener('mouseup', onMouseUp);
@@ -986,6 +992,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('resize', resizeCanvas);
   window.removeEventListener('keydown', onKeyDown);
   window.removeEventListener('keyup', onKeyUp);
+  window.removeEventListener('blur', onWindowBlur);
   window.removeEventListener('pointerup', onPointerUp);
   window.removeEventListener('mousedown', onMouseDown);
   window.removeEventListener('mouseup', onMouseUp);
