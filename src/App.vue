@@ -141,6 +141,7 @@ function snapshot(): FlowSnapshot {
 }
 
 function applySnapshot(next: FlowSnapshot) {
+  clearExportStatus();
   state.elements = next.elements.map(cloneElement);
   state.connections = next.connections.map(cloneConnection);
   state.selection = cloneSelection(next.selection);
@@ -153,7 +154,12 @@ function applySnapshot(next: FlowSnapshot) {
 }
 
 function recordHistory() {
+  clearExportStatus();
   pushHistory(history, snapshot());
+}
+
+function clearExportStatus() {
+  exportStatus.value = '';
 }
 
 function draw() {
@@ -230,6 +236,7 @@ function isMultiSelectEvent(event: PointerEvent | MouseEvent) {
 }
 
 function onPointerDown(event: PointerEvent) {
+  clearExportStatus();
   const canvas = canvasRef.value;
   if (!canvas) return;
   const screenPoint = canvasPoint(event);
@@ -679,6 +686,7 @@ function canvasToPngBlob(canvas: HTMLCanvasElement) {
 }
 
 async function downloadImage() {
+  exportStatus.value = 'Preparing image...';
   const exportCanvas = createExportCanvas();
   if (!exportCanvas) {
     exportStatus.value = 'Nothing to export';
@@ -695,6 +703,7 @@ async function downloadImage() {
 }
 
 async function copyImage() {
+  exportStatus.value = 'Preparing image...';
   const exportCanvas = createExportCanvas();
   if (!exportCanvas) {
     exportStatus.value = 'Nothing to copy';
