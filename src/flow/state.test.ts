@@ -5,6 +5,7 @@ import {
   clearHoverState,
   cloneSnapshot,
   createFixedResizeBase,
+  getSharedValue,
   isSelected,
   restoreElementPositions,
   toggleSelection,
@@ -73,6 +74,21 @@ describe('state', () => {
 
     expect(snapshot.connections[0].source.elementId).toBe('element-a');
     expect(snapshot.selection.items[0].id).toBe('element-a');
+  });
+
+  it('returns shared batch values only when every selected item matches', () => {
+    const same = [
+      { ...element, id: 'a', borderWidth: 2 },
+      { ...element, id: 'b', borderWidth: 2 },
+    ];
+    const mixed = [
+      { ...element, id: 'a', borderWidth: 2 },
+      { ...element, id: 'b', borderWidth: 4 },
+    ];
+
+    expect(getSharedValue(same, 'borderWidth')).toBe(2);
+    expect(getSharedValue(mixed, 'borderWidth')).toBe('');
+    expect(getSharedValue([], 'borderWidth')).toBe('');
   });
 
   it('preserves measured dimensions when switching fit-content elements to fixed', () => {

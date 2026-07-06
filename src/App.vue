@@ -27,6 +27,7 @@ import {
   cloneSelection,
   createFixedResizeBase,
   deleteSelectionFromFlow,
+  getSharedValue,
   getSelectionItems,
   isSelected,
   pushHistory,
@@ -818,12 +819,6 @@ function updateConnectionNumber<K extends keyof Connection>(connection: Connecti
   const value = input.valueAsNumber;
   if (!Number.isFinite(value)) return;
   updateConnection(connection, key, value as Connection[K]);
-}
-
-function getSharedValue<T extends Record<string, unknown>, K extends keyof T>(items: T[], key: K): T[K] | '' {
-  if (items.length === 0) return '';
-  const first = items[0][key];
-  return items.every((item) => Object.is(item[key], first)) ? first : '';
 }
 
 function batchElementValue<K extends keyof FlowElement>(key: K): FlowElement[K] | '' {

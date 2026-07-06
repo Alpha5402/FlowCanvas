@@ -65,6 +65,12 @@ export function isSelected(selection: Selection, type: 'element' | 'connection',
   return getSelectionItems(selection).some((item) => item.type === type && item.id === id);
 }
 
+export function getSharedValue<T extends Record<string, unknown>, K extends keyof T>(items: T[], key: K): T[K] | '' {
+  if (items.length === 0) return '';
+  const first = items[0][key];
+  return items.every((item) => Object.is(item[key], first)) ? first : '';
+}
+
 export function toggleSelection(
   selection: Selection,
   item: { type: 'element' | 'connection'; id: string },
