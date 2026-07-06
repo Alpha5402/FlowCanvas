@@ -933,14 +933,28 @@ function updateSelectedElementNumber<K extends keyof FlowElement>(key: K, input:
   if (input.value === '') return;
   const value = input.valueAsNumber;
   if (!Number.isFinite(value)) return;
-  updateSelectedElements(key, normalizeElementNumber(key, value) as FlowElement[K]);
+  const next = normalizeElementNumber(key, value) as FlowElement[K];
+  if (selectedElements.value.length === 0) return;
+  if (selectedElements.value.every((element) => Object.is(element[key], next))) return;
+  ensureNumberEditHistory('element', 'batch-elements', key as string);
+  for (const element of selectedElements.value) {
+    element[key] = next;
+  }
+  draw();
 }
 
 function updateSelectedConnectionNumber<K extends keyof Connection>(key: K, input: HTMLInputElement) {
   if (input.value === '') return;
   const value = input.valueAsNumber;
   if (!Number.isFinite(value)) return;
-  updateSelectedConnections(key, normalizeConnectionNumber(key, value) as Connection[K]);
+  const next = normalizeConnectionNumber(key, value) as Connection[K];
+  if (selectedConnections.value.length === 0) return;
+  if (selectedConnections.value.every((connection) => Object.is(connection[key], next))) return;
+  ensureNumberEditHistory('connection', 'batch-connections', key as string);
+  for (const connection of selectedConnections.value) {
+    connection[key] = next;
+  }
+  draw();
 }
 
 function updateSelectedElementChoice<K extends keyof FlowElement>(key: K, input: HTMLSelectElement) {
@@ -1448,6 +1462,8 @@ onBeforeUnmount(() => {
                 min="48"
                 :disabled="batchElementValue('sizeMode') === 'fit-content'"
                 :value="batchElementValue('width')"
+                @focus="beginNumberEdit('element', 'batch-elements', 'width')"
+                @blur="endNumberEdit"
                 @input="updateSelectedElementNumber('width', $event.target as HTMLInputElement)"
               />
             </label>
@@ -1458,6 +1474,8 @@ onBeforeUnmount(() => {
                 min="32"
                 :disabled="batchElementValue('sizeMode') === 'fit-content'"
                 :value="batchElementValue('height')"
+                @focus="beginNumberEdit('element', 'batch-elements', 'height')"
+                @blur="endNumberEdit"
                 @input="updateSelectedElementNumber('height', $event.target as HTMLInputElement)"
               />
             </label>
@@ -1469,6 +1487,8 @@ onBeforeUnmount(() => {
                 type="number"
                 min="0"
                 :value="batchElementValue('padding')"
+                @focus="beginNumberEdit('element', 'batch-elements', 'padding')"
+                @blur="endNumberEdit"
                 @input="updateSelectedElementNumber('padding', $event.target as HTMLInputElement)"
               />
             </label>
@@ -1478,6 +1498,8 @@ onBeforeUnmount(() => {
                 type="number"
                 min="0"
                 :value="batchElementValue('borderRadius')"
+                @focus="beginNumberEdit('element', 'batch-elements', 'borderRadius')"
+                @blur="endNumberEdit"
                 @input="updateSelectedElementNumber('borderRadius', $event.target as HTMLInputElement)"
               />
             </label>
@@ -1525,6 +1547,8 @@ onBeforeUnmount(() => {
               min="0"
               max="12"
               :value="batchElementValue('borderWidth')"
+              @focus="beginNumberEdit('element', 'batch-elements', 'borderWidth')"
+              @blur="endNumberEdit"
               @input="updateSelectedElementNumber('borderWidth', $event.target as HTMLInputElement)"
             />
           </label>
@@ -1556,6 +1580,8 @@ onBeforeUnmount(() => {
               min="1"
               max="12"
               :value="batchConnectionValue('lineWidth')"
+              @focus="beginNumberEdit('connection', 'batch-connections', 'lineWidth')"
+              @blur="endNumberEdit"
               @input="updateSelectedConnectionNumber('lineWidth', $event.target as HTMLInputElement)"
             />
           </label>
@@ -1567,6 +1593,8 @@ onBeforeUnmount(() => {
                 min="1"
                 :disabled="batchConnectionValue('lineType') === 'solid'"
                 :value="batchConnectionValue('dashLength')"
+                @focus="beginNumberEdit('connection', 'batch-connections', 'dashLength')"
+                @blur="endNumberEdit"
                 @input="updateSelectedConnectionNumber('dashLength', $event.target as HTMLInputElement)"
               />
             </label>
@@ -1577,6 +1605,8 @@ onBeforeUnmount(() => {
                 min="1"
                 :disabled="batchConnectionValue('lineType') === 'solid'"
                 :value="batchConnectionValue('dashGap')"
+                @focus="beginNumberEdit('connection', 'batch-connections', 'dashGap')"
+                @blur="endNumberEdit"
                 @input="updateSelectedConnectionNumber('dashGap', $event.target as HTMLInputElement)"
               />
             </label>
