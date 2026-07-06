@@ -14,6 +14,7 @@ import {
 const ANCHOR_HIT_RADIUS = 10;
 const EDGE_HIT_DISTANCE = 8;
 const RESIZE_HIT_RADIUS = 12;
+const CONNECTION_HIT_PADDING = 7.5;
 
 export function hitTestElement(point: Point, elements: FlowElement[], measurer?: Measurer): FlowElement | null {
   for (let index = elements.length - 1; index >= 0; index -= 1) {
@@ -97,9 +98,13 @@ export function hitTestConnection(
 ): Connection | null {
   for (let index = connections.length - 1; index >= 0; index -= 1) {
     const path = getConnectionPath(connections[index], elements, measurer);
-    if (path && distanceToConnection(point, path) <= 8) return connections[index];
+    if (path && distanceToConnection(point, path) <= getConnectionHitDistance(connections[index])) return connections[index];
   }
   return null;
+}
+
+export function getConnectionHitDistance(connection: Pick<Connection, 'lineWidth'>): number {
+  return Math.max(8, CONNECTION_HIT_PADDING + Math.max(1, connection.lineWidth ?? 1) / 2);
 }
 
 function closestElementSide(point: Point, element: FlowElement, measurer?: Measurer): AnchorSide | null {
