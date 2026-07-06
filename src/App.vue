@@ -172,14 +172,21 @@ function snapshot(): FlowSnapshot {
 
 function applySnapshot(next: FlowSnapshot) {
   clearExportStatus();
+  drag.value = null;
+  resize.value = null;
+  pan.value = null;
+  endTextEdit();
   state.elements = next.elements.map(cloneElement);
   state.connections = next.connections.map(cloneConnection);
   state.selection = cloneSelection(next.selection);
   state.mode = 'idle';
   state.pendingConnectionSource = null;
   state.previewConnection = null;
+  connectionStartedAt.value = 0;
+  connectionStartPoint.value = null;
   state.guides = [];
   clearHover();
+  updateCursor(isSpacePressed.value ? 'grab' : 'default');
   nextTick(draw);
 }
 
