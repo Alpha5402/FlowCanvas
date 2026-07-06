@@ -8,7 +8,7 @@ import type {
   Selection,
   ViewportState,
 } from '../types/flow';
-import { getSelectionItems, isSelected } from './state';
+import { isSelected, shouldHideElementControls } from './state';
 import {
   createConnectionPath,
   createPreviewPath,
@@ -51,8 +51,7 @@ export function renderFlow(
   context.translate(viewport.x, viewport.y);
   context.scale(viewport.zoom, viewport.zoom);
   const measurer: Measurer = context;
-  const selectedElementCount = getSelectionItems(selection).filter((item) => item.type === 'element').length;
-  const elementControlsHidden = selectedElementCount > 1;
+  const elementControlsHidden = shouldHideElementControls(selection);
   const labelBackgroundColor = getConnectionTextBackground(options.showGrid ?? true);
 
   connections.forEach((connection) => {

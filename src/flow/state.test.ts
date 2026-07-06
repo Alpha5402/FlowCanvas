@@ -13,6 +13,7 @@ import {
   normalizeConnectionNumber,
   normalizeElementNumber,
   restoreElementPositions,
+  shouldHideElementControls,
   toggleSelection,
 } from './state';
 
@@ -109,6 +110,20 @@ describe('state', () => {
     expect(getSharedValue(same, 'borderWidth')).toBe(2);
     expect(getSharedValue(mixed, 'borderWidth')).toBe('');
     expect(getSharedValue([], 'borderWidth')).toBe('');
+  });
+
+  it('hides element controls for any multi-selection, including mixed selections', () => {
+    expect(shouldHideElementControls(null)).toBe(false);
+    expect(shouldHideElementControls({ type: 'element', id: 'element-a' })).toBe(false);
+    expect(
+      shouldHideElementControls({
+        type: 'multi',
+        items: [
+          { type: 'element', id: 'element-a' },
+          { type: 'connection', id: 'connection-a' },
+        ],
+      }),
+    ).toBe(true);
   });
 
   it('resolves export content for board and selection exports', () => {

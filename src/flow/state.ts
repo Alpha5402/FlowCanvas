@@ -108,6 +108,10 @@ export function isSelected(selection: Selection, type: 'element' | 'connection',
   return getSelectionItems(selection).some((item) => item.type === type && item.id === id);
 }
 
+export function shouldHideElementControls(selection: Selection): boolean {
+  return getSelectionItems(selection).length > 1;
+}
+
 export function getSharedValue<T extends Record<string, unknown>, K extends keyof T>(items: T[], key: K): T[K] | '' {
   if (items.length === 0) return '';
   const first = items[0][key];
