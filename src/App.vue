@@ -1236,6 +1236,10 @@ onBeforeUnmount(() => {
         <fieldset>
           <legend>Elements</legend>
           <label>
+            Text
+            <input :value="batchElementValue('text')" disabled />
+          </label>
+          <label>
             Shape
             <select
               :value="batchElementValue('shape')"
@@ -1357,6 +1361,10 @@ onBeforeUnmount(() => {
       <form v-else-if="showBatchConnectionForm" class="panel-form" @submit.prevent>
         <fieldset>
           <legend>Connections</legend>
+          <label>
+            Text
+            <input :value="batchConnectionValue('text')" disabled />
+          </label>
           <label>
             Line type
             <select
