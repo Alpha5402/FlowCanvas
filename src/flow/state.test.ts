@@ -5,7 +5,9 @@ import {
   clearHoverState,
   cloneSnapshot,
   createFixedResizeBase,
+  deleteSelectionFromFlow,
   getExportContent,
+  getConnectionEndpoint,
   getSharedValue,
   isSelected,
   normalizeConnectionNumber,
@@ -79,6 +81,21 @@ describe('state', () => {
     expect(snapshot.selection.items[0].id).toBe('element-a');
   });
 
+  it('normalizes legacy connection endpoints when cloning snapshots', () => {
+    const legacy = {
+      ...connection,
+      source: undefined,
+      target: undefined,
+      sourceElementId: 'legacy-a',
+      targetElementId: 'legacy-b',
+    } as unknown as Connection;
+    const cloned = cloneSnapshot({ elements: [], connections: [legacy], selection: null });
+
+    expect(cloned.connections[0].source).toEqual({ elementId: 'legacy-a', side: 'right' });
+    expect(cloned.connections[0].target).toEqual({ elementId: 'legacy-b', side: 'left' });
+    expect(getConnectionEndpoint(legacy, 'source')).toEqual({ elementId: 'legacy-a', side: 'right' });
+  });
+
   it('returns shared batch values only when every selected item matches', () => {
     const same = [
       { ...element, id: 'a', borderWidth: 2 },
@@ -120,6 +137,27 @@ describe('state', () => {
         ],
       }).connections.map((item) => item.id),
     ).toEqual(['ab']);
+  });
+
+  it('resolves legacy connection endpoints for deletion and export content', () => {
+    const elements = [
+      { ...element, id: 'legacy-a' },
+      { ...element, id: 'legacy-b' },
+    ];
+    const legacy = {
+      ...connection,
+      id: 'legacy',
+      source: undefined,
+      target: undefined,
+      sourceElementId: 'legacy-a',
+      targetElementId: 'legacy-b',
+    } as unknown as Connection;
+
+    expect(getExportContent(elements, [legacy], { type: 'connection', id: 'legacy' }).elements.map((item) => item.id)).toEqual([
+      'legacy-a',
+      'legacy-b',
+    ]);
+    expect(deleteSelectionFromFlow(elements, [legacy], { type: 'element', id: 'legacy-a' }).connections).toHaveLength(0);
   });
 
   it('normalizes numeric element values before writing inspector changes', () => {

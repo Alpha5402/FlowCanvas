@@ -1,4 +1,4 @@
-import type { Connection, EditorState, FlowElement, Selection } from '../types/flow';
+import type { Connection, ConnectionEndpoint, EditorState, FlowElement, Selection } from '../types/flow';
 
 export interface FlowSnapshot {
   elements: FlowElement[];
@@ -14,11 +14,7 @@ export interface HistoryState {
 export function cloneSnapshot(snapshot: FlowSnapshot): FlowSnapshot {
   return {
     elements: snapshot.elements.map((element) => ({ ...element })),
-    connections: snapshot.connections.map((connection) => ({
-      ...connection,
-      source: { ...connection.source },
-      target: { ...connection.target },
-    })),
+    connections: snapshot.connections.map(cloneConnection),
     selection: cloneSelection(snapshot.selection),
   };
 }
@@ -36,12 +32,11 @@ export function deleteSelectionFromFlow(
   return {
     elements: elements.filter((element) => !elementIds.has(element.id)),
     connections: connections.filter(
-      (connection) =>
-        !connectionIds.has(connection.id) &&
-        !elementIds.has(connection.source.elementId) &&
-        !elementIds.has(connection.target.elementId) &&
-        !elementIds.has(connection.sourceElementId ?? '') &&
-        !elementIds.has(connection.targetElementId ?? ''),
+      (connection) => {
+        const source = getConnectionEndpoint(connection, 'source');
+        const target = getConnectionEndpoint(connection, 'target');
+        return !connectionIds.has(connection.id) && !elementIds.has(source.elementId) && !elementIds.has(target.elementId);
+      },
     ),
     selection: null,
   };
@@ -59,16 +54,18 @@ export function getExportContent(
 
   const exportConnections = hasSelection
     ? connections.filter(
-        (connection) =>
-          selectedConnectionIds.has(connection.id) ||
-          (selectedElementIds.has(connection.source.elementId) && selectedElementIds.has(connection.target.elementId)),
+        (connection) => {
+          const source = getConnectionEndpoint(connection, 'source');
+          const target = getConnectionEndpoint(connection, 'target');
+          return selectedConnectionIds.has(connection.id) || (selectedElementIds.has(source.elementId) && selectedElementIds.has(target.elementId));
+        },
       )
     : connections;
 
   const requiredElementIds = new Set(selectedElementIds);
   for (const connection of exportConnections) {
-    requiredElementIds.add(connection.source.elementId);
-    requiredElementIds.add(connection.target.elementId);
+    requiredElementIds.add(getConnectionEndpoint(connection, 'source').elementId);
+    requiredElementIds.add(getConnectionEndpoint(connection, 'target').elementId);
   }
 
   const exportElements = hasSelection ? elements.filter((element) => requiredElementIds.has(element.id)) : elements;
@@ -76,10 +73,27 @@ export function getExportContent(
   return { elements: exportElements, connections: exportConnections };
 }
 
+export function getConnectionEndpoint(connection: Connection, end: 'source' | 'target'): ConnectionEndpoint {
+  const endpoint = connection[end] as ConnectionEndpoint | undefined;
+  if (endpoint) return endpoint;
+  return {
+    elementId: end === 'source' ? connection.sourceElementId ?? '' : connection.targetElementId ?? '',
+    side: end === 'source' ? 'right' : 'left',
+  };
+}
+
 export function getSelectionItems(selection: Selection): Array<{ type: 'element' | 'connection'; id: string }> {
   if (!selection) return [];
   if (selection.type === 'multi') return selection.items;
   return [selection];
+}
+
+export function cloneConnection(connection: Connection): Connection {
+  return {
+    ...connection,
+    source: { ...getConnectionEndpoint(connection, 'source') },
+    target: { ...getConnectionEndpoint(connection, 'target') },
+  };
 }
 
 export function cloneSelection(selection: Selection): Selection {
