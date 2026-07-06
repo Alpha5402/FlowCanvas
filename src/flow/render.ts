@@ -120,14 +120,14 @@ function drawBackground(
 function drawElement(context: CanvasRenderingContext2D, element: FlowElement, selected: boolean, hovered: boolean, measurer: Measurer) {
   const box = getElementBox(element, measurer);
   context.save();
-  const emphasisWidth = selected ? 2 : hovered ? 1.5 : 0;
+  const strokeWidth = getElementStrokeWidth(element, selected, hovered);
   context.fillStyle = element.backgroundColor;
   context.strokeStyle = selected ? '#ef4444' : hovered ? '#2563eb' : element.borderColor;
-  context.lineWidth = Math.max(1, element.borderWidth + emphasisWidth);
+  context.lineWidth = strokeWidth;
   context.setLineDash([]);
   createElementPath(context, element, box);
   context.fill();
-  context.stroke();
+  if (strokeWidth > 0) context.stroke();
 
   context.font = FONT;
   context.fillStyle = '#111827';
@@ -142,6 +142,12 @@ function drawElement(context: CanvasRenderingContext2D, element: FlowElement, se
   context.fillText(element.text, textX, box.y + box.height / 2, Math.max(12, box.width - element.padding * 2));
 
   context.restore();
+}
+
+export function getElementStrokeWidth(element: Pick<FlowElement, 'borderWidth'>, selected: boolean, hovered: boolean): number {
+  const emphasisWidth = selected ? 2 : hovered ? 1.5 : 0;
+  if (emphasisWidth > 0) return Math.max(1, element.borderWidth + emphasisWidth);
+  return Math.max(0, element.borderWidth);
 }
 
 function drawConnection(
