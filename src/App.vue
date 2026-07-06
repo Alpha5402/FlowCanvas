@@ -1038,7 +1038,7 @@ onBeforeUnmount(() => {
     </section>
 
     <aside class="inspector" aria-label="Properties">
-      <h2>Inspector</h2>
+      <h2 v-if="!hasMixedSelection">Inspector</h2>
 
       <form v-if="selectedElement" class="panel-form" @submit.prevent>
         <fieldset>
