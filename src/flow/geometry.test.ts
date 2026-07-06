@@ -10,6 +10,7 @@ import {
   measureFitContent,
   resizeElementBox,
   snapElement,
+  snapPreviewPoint,
 } from './geometry';
 import { deleteSelectionFromFlow, pushHistory, redo, toggleSelection, undo, type HistoryState } from './state';
 
@@ -128,14 +129,41 @@ describe('geometry', () => {
     expect(inferTargetSide('bottom')).toBe('top');
   });
 
-  it('snaps moving element edges and returns alignment guides', () => {
+  it('snaps moving elements and returns alignment guides', () => {
     const moving = { ...baseElement, id: 'moving', x: 0, y: 0 };
     const target = { ...baseElement, id: 'target', x: 200, y: 160 };
 
     const result = snapElement(moving, [moving, target], 205, 60, measurer);
 
     expect(result.x).toBe(200);
-    expect(result.guides.some((guide) => guide.orientation === 'vertical' && guide.position === 200)).toBe(true);
+    expect(result.guides.some((guide) => guide.orientation === 'vertical')).toBe(true);
+  });
+
+  it('prefers center alignment guides when multiple snap rules match', () => {
+    const moving = { ...baseElement, id: 'moving', x: 0, y: 0 };
+    const target = { ...baseElement, id: 'target', x: 200, y: 160 };
+
+    const result = snapElement(moving, [moving, target], 195, 60, measurer);
+
+    expect(result.x).toBe(200);
+    expect(result.guides.some((guide) => guide.orientation === 'vertical' && guide.position === 260)).toBe(true);
+  });
+
+  it('snaps preview points to horizontal and vertical axes from the source anchor', () => {
+    const source = getElementAnchors(baseElement, measurer).find((anchor) => anchor.side === 'right')!;
+
+    expect(snapPreviewPoint(source, { x: source.x + 160, y: source.y + 8 })).toEqual({
+      x: source.x + 160,
+      y: source.y,
+    });
+    expect(snapPreviewPoint(source, { x: source.x + 8, y: source.y + 160 })).toEqual({
+      x: source.x,
+      y: source.y + 160,
+    });
+    expect(snapPreviewPoint(source, { x: source.x + 160, y: source.y + 24 })).toEqual({
+      x: source.x + 160,
+      y: source.y + 24,
+    });
   });
 
   it('resizes from the left while keeping the opposite edge fixed', () => {

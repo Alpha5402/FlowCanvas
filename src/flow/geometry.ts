@@ -48,6 +48,7 @@ export interface ResizeResult {
 const FONT_SIZE = 14;
 const LINE_HEIGHT = 20;
 const SNAP_DISTANCE = 6;
+const PREVIEW_AXIS_SNAP_DISTANCE = 12;
 const LEAD_DISTANCE = 32;
 export const MIN_ELEMENT_WIDTH = 48;
 export const MIN_ELEMENT_HEIGHT = 32;
@@ -201,6 +202,21 @@ export function createPreviewPath(sourceAnchor: Anchor, pointer: Point): Connect
   return createConnectionPath(sourceAnchor, targetAnchor);
 }
 
+export function snapPreviewPoint(sourceAnchor: Anchor, pointer: Point): Point {
+  const snapped = { ...pointer };
+  const dx = pointer.x - sourceAnchor.x;
+  const dy = pointer.y - sourceAnchor.y;
+
+  if (Math.abs(dy) <= PREVIEW_AXIS_SNAP_DISTANCE && Math.abs(dx) > Math.abs(dy)) {
+    snapped.y = sourceAnchor.y;
+  }
+  if (Math.abs(dx) <= PREVIEW_AXIS_SNAP_DISTANCE && Math.abs(dy) > Math.abs(dx)) {
+    snapped.x = sourceAnchor.x;
+  }
+
+  return snapped;
+}
+
 export function inferTargetSide(sourceSide: AnchorSide): AnchorSide {
   if (sourceSide === 'right') return 'left';
   if (sourceSide === 'left') return 'right';
@@ -230,8 +246,8 @@ export function snapElement(
 ): SnapResult {
   const movingBox = getElementBox({ ...moving, x: proposedX, y: proposedY }, measurer);
   const movingAnchors = boxAnchors(movingBox);
-  let bestVertical: { diff: number; guide: AlignmentGuide } | null = null;
-  let bestHorizontal: { diff: number; guide: AlignmentGuide } | null = null;
+  let bestVertical: SnapCandidate | null = null;
+  let bestHorizontal: SnapCandidate | null = null;
 
   for (const other of elements) {
     if (other.id === moving.id) continue;
@@ -248,8 +264,9 @@ export function snapElement(
             from: Math.min(otherBox.y, proposedY) - 36,
             to: Math.max(otherBox.y + otherBox.height, proposedY + movingBox.height) + 36,
           } satisfies AlignmentGuide;
-          if (!bestVertical || Math.abs(diff) < Math.abs(bestVertical.diff)) {
-            bestVertical = { diff, guide };
+          const candidate = { diff, guide, priority: centerPriority(movingKey, otherKey) };
+          if (shouldUseSnapCandidate(bestVertical, candidate)) {
+            bestVertical = candidate;
           }
         }
       }
@@ -265,8 +282,9 @@ export function snapElement(
             from: Math.min(otherBox.x, proposedX) - 36,
             to: Math.max(otherBox.x + otherBox.width, proposedX + movingBox.width) + 36,
           } satisfies AlignmentGuide;
-          if (!bestHorizontal || Math.abs(diff) < Math.abs(bestHorizontal.diff)) {
-            bestHorizontal = { diff, guide };
+          const candidate = { diff, guide, priority: centerPriority(movingKey, otherKey) };
+          if (shouldUseSnapCandidate(bestHorizontal, candidate)) {
+            bestHorizontal = candidate;
           }
         }
       }
@@ -279,6 +297,12 @@ export function snapElement(
     guides: [bestVertical?.guide, bestHorizontal?.guide].filter((guide): guide is AlignmentGuide => Boolean(guide)),
   };
 }
+
+type SnapCandidate = {
+  diff: number;
+  guide: AlignmentGuide;
+  priority: number;
+};
 
 export function resizeElementBox(
   original: FlowElement,
@@ -379,6 +403,20 @@ function boxAnchors(box: ElementBox) {
     centerY: box.y + box.height / 2,
     bottom: box.y + box.height,
   };
+}
+
+function centerPriority(first: string, second: string): number {
+  return Number(isCenterAnchor(first)) + Number(isCenterAnchor(second));
+}
+
+function isCenterAnchor(key: string): boolean {
+  return key === 'centerX' || key === 'centerY';
+}
+
+function shouldUseSnapCandidate(current: SnapCandidate | null, candidate: SnapCandidate): boolean {
+  if (!current) return true;
+  if (candidate.priority !== current.priority) return candidate.priority > current.priority;
+  return Math.abs(candidate.diff) < Math.abs(current.diff);
 }
 
 function cubicPoint(start: Point, control1: Point, control2: Point, end: Point, t: number): Point {

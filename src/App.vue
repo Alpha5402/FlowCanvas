@@ -9,6 +9,7 @@ import {
   inferTargetSide,
   resizeElementBox,
   snapElement,
+  snapPreviewPoint,
 } from './flow/geometry';
 import {
   hitTestAnchorHandle,
@@ -141,6 +142,7 @@ const isSpacePressed = ref(false);
 const connectionStartedAt = ref(0);
 const canvasCursor = ref('default');
 const EXPORT_FONT = '14px Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+const CONNECTION_CREATION_MOVE_THRESHOLD = 10;
 
 function snapshot(): FlowSnapshot {
   return {
@@ -376,8 +378,8 @@ function onPointerMove(event: PointerEvent) {
   }
 
   if (state.mode === 'creating-connection' && state.previewConnection) {
-    state.previewConnection.pointer = point;
     const target = hitTestElementAnchorOrEdge(point, state.elements, state.pendingConnectionSource?.elementId, context);
+    state.previewConnection.pointer = target ? point : snapPreviewPoint(state.previewConnection.source, point);
     state.hoverAnchor = target ? { elementId: target.elementId, side: target.side } : null;
     state.previewConnection.target = target;
     state.hoverElementId = target?.elementId ?? null;
@@ -516,8 +518,21 @@ function onMouseDown(event: MouseEvent) {
   finishPointerInteraction();
 }
 
+function connectionPointerMovedEnough(point: Point): boolean {
+  const source = state.previewConnection?.source;
+  if (!source) return false;
+  const screenDistance = Math.hypot(point.x - source.x, point.y - source.y) * state.viewport.zoom;
+  return screenDistance >= CONNECTION_CREATION_MOVE_THRESHOLD;
+}
+
+function getPreviewCreationPoint(point: Point): Point {
+  const source = state.previewConnection?.source;
+  if (!source) return point;
+  return snapPreviewPoint(source, point);
+}
+
 function completeConnectionCreation(point: Point, context?: CanvasRenderingContext2D) {
-  if (!state.pendingConnectionSource) return;
+  if (!state.pendingConnectionSource || !connectionPointerMovedEnough(point)) return;
   const source = state.pendingConnectionSource;
   const target = hitTestElementAnchorOrEdge(point, state.elements, source.elementId, context);
   recordHistory();
@@ -529,12 +544,13 @@ function completeConnectionCreation(point: Point, context?: CanvasRenderingConte
   }
 
   const targetSide = inferTargetSide(source.side);
-  const next = createElement(point.x, point.y);
+  const creationPoint = getPreviewCreationPoint(point);
+  const next = createElement(creationPoint.x, creationPoint.y);
   next.text = 'New Node';
   const box = getElementBox(next, context);
   const anchor = findAnchor([next], { elementId: next.id, side: targetSide }, context);
-  next.x += point.x - (anchor?.x ?? box.x);
-  next.y += point.y - (anchor?.y ?? box.y);
+  next.x += creationPoint.x - (anchor?.x ?? box.x);
+  next.y += creationPoint.y - (anchor?.y ?? box.y);
   state.elements.push(next);
   state.connections.push(createConnection(source.elementId, next.id, source.side, targetSide));
   state.selection = { type: 'element', id: next.id };
