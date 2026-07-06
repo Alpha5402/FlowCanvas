@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Connection, FlowElement } from '../types/flow';
 import {
   applyElementSizeMode,
+  canEditConnectionDashPattern,
   canEditElementDimensions,
   clearHoverState,
   cloneSnapshot,
@@ -136,6 +137,17 @@ describe('state', () => {
       canEditElementDimensions([
         { ...element, id: 'a', sizeMode: 'fixed' },
         { ...element, id: 'b', sizeMode: 'fit-content' },
+      ]),
+    ).toBe(false);
+  });
+
+  it('allows batch dash edits only when every selected connection is dashed', () => {
+    expect(canEditConnectionDashPattern([])).toBe(false);
+    expect(canEditConnectionDashPattern([{ ...connection, lineType: 'dashed' }])).toBe(true);
+    expect(
+      canEditConnectionDashPattern([
+        { ...connection, id: 'a', lineType: 'dashed' },
+        { ...connection, id: 'b', lineType: 'solid' },
       ]),
     ).toBe(false);
   });

@@ -146,6 +146,10 @@ export function canEditElementDimensions(elements: FlowElement[]): boolean {
   return elements.length > 0 && elements.every((element) => element.sizeMode === 'fixed');
 }
 
+export function canEditConnectionDashPattern(connections: Connection[]): boolean {
+  return connections.length > 0 && connections.every((connection) => connection.lineType === 'dashed');
+}
+
 export function normalizeElementNumber(key: keyof FlowElement, value: number): number {
   if (key === 'width') return Math.max(48, value);
   if (key === 'height') return Math.max(32, value);

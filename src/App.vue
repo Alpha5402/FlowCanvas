@@ -21,6 +21,7 @@ import {
 import { renderFlow } from './flow/render';
 import {
   applyElementSizeMode,
+  canEditConnectionDashPattern,
   canEditElementDimensions,
   cloneConnection,
   clearHoverState,
@@ -116,6 +117,7 @@ const hasMixedSelection = computed(() => selectedElements.value.length > 0 && se
 const showBatchElementForm = computed(() => selectedElements.value.length > 1 && selectedConnections.value.length === 0);
 const showBatchConnectionForm = computed(() => selectedConnections.value.length > 1 && selectedElements.value.length === 0);
 const canEditSelectedElementDimensions = computed(() => canEditElementDimensions(selectedElements.value));
+const canEditSelectedConnectionDashPattern = computed(() => canEditConnectionDashPattern(selectedConnections.value));
 const exportStatus = ref('');
 const exportBusy = ref(false);
 const textEdit = ref<{ type: 'element' | 'connection'; id: string; hasHistory: boolean } | null>(null);
@@ -981,6 +983,7 @@ function updateSelectedConnectionNumber<K extends keyof Connection>(key: K, inpu
   if (!Number.isFinite(value)) return;
   const next = normalizeConnectionNumber(key, value) as Connection[K];
   if (selectedConnections.value.length === 0) return;
+  if ((key === 'dashLength' || key === 'dashGap') && !canEditSelectedConnectionDashPattern.value) return;
   if (selectedConnections.value.every((connection) => Object.is(connection[key], next))) return;
   ensureFieldEditHistory('connection', 'batch-connections', key as string);
   for (const connection of selectedConnections.value) {
@@ -1613,7 +1616,7 @@ onBeforeUnmount(() => {
               <input
                 type="number"
                 min="1"
-                :disabled="batchConnectionValue('lineType') === 'solid'"
+                :disabled="!canEditSelectedConnectionDashPattern"
                 :value="batchConnectionValue('dashLength')"
                 @focus="beginFieldEdit('connection', 'batch-connections', 'dashLength')"
                 @blur="endFieldEdit"
@@ -1625,7 +1628,7 @@ onBeforeUnmount(() => {
               <input
                 type="number"
                 min="1"
-                :disabled="batchConnectionValue('lineType') === 'solid'"
+                :disabled="!canEditSelectedConnectionDashPattern"
                 :value="batchConnectionValue('dashGap')"
                 @focus="beginFieldEdit('connection', 'batch-connections', 'dashGap')"
                 @blur="endFieldEdit"
