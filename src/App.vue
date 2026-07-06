@@ -925,7 +925,11 @@ function updateSelectedConnections<K extends keyof Connection>(key: K, value: Co
 
 function updateSelectedElementColor(key: 'backgroundColor' | 'borderColor', value: string) {
   const color = normalizeHexColorInput(value);
-  if (!color) return;
+  if (!color) {
+    exportStatus.value = 'Use a hex color like #ffffff or fff';
+    return;
+  }
+  clearExportStatus();
   updateSelectedElements(key, color);
 }
 
