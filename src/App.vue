@@ -1026,7 +1026,7 @@ onBeforeUnmount(() => {
         <button class="tool-action" type="button" @click="downloadImage">
           Download image
         </button>
-        <span v-if="exportStatus" class="export-status">{{ exportStatus }}</span>
+        <span v-if="exportStatus" class="export-status" role="status" aria-live="polite">{{ exportStatus }}</span>
       </div>
       <button class="tool-action" type="button" @click="resetView">
         <span aria-hidden="true">⌖</span>
