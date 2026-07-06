@@ -21,6 +21,7 @@ import {
 import { renderFlow } from './flow/render';
 import {
   applyElementSizeMode,
+  canEditElementDimensions,
   cloneConnection,
   clearHoverState,
   cloneSelection,
@@ -114,9 +115,7 @@ const selectedCount = computed(() => selectedElements.value.length + selectedCon
 const hasMixedSelection = computed(() => selectedElements.value.length > 0 && selectedConnections.value.length > 0);
 const showBatchElementForm = computed(() => selectedElements.value.length > 1 && selectedConnections.value.length === 0);
 const showBatchConnectionForm = computed(() => selectedConnections.value.length > 1 && selectedElements.value.length === 0);
-const canEditSelectedElementDimensions = computed(
-  () => selectedElements.value.length > 0 && selectedElements.value.every((element) => element.sizeMode === 'fixed'),
-);
+const canEditSelectedElementDimensions = computed(() => canEditElementDimensions(selectedElements.value));
 const exportStatus = ref('');
 const exportBusy = ref(false);
 const textEdit = ref<{ type: 'element' | 'connection'; id: string; hasHistory: boolean } | null>(null);

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Connection, FlowElement } from '../types/flow';
 import {
   applyElementSizeMode,
+  canEditElementDimensions,
   clearHoverState,
   cloneSnapshot,
   createFixedResizeBase,
@@ -126,6 +127,17 @@ describe('state', () => {
     expect(getSharedValue(same, 'borderWidth')).toBe(2);
     expect(getSharedValue(mixed, 'borderWidth')).toBe('');
     expect(getSharedValue([], 'borderWidth')).toBe('');
+  });
+
+  it('allows batch dimension edits only when every selected element is fixed-size', () => {
+    expect(canEditElementDimensions([])).toBe(false);
+    expect(canEditElementDimensions([{ ...element, sizeMode: 'fixed' }])).toBe(true);
+    expect(
+      canEditElementDimensions([
+        { ...element, id: 'a', sizeMode: 'fixed' },
+        { ...element, id: 'b', sizeMode: 'fit-content' },
+      ]),
+    ).toBe(false);
   });
 
   it('hides element controls for any multi-selection, including mixed selections', () => {

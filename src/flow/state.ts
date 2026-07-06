@@ -142,6 +142,10 @@ export function getSharedValue<T extends Record<string, unknown>, K extends keyo
   return items.every((item) => Object.is(item[key], first)) ? first : '';
 }
 
+export function canEditElementDimensions(elements: FlowElement[]): boolean {
+  return elements.length > 0 && elements.every((element) => element.sizeMode === 'fixed');
+}
+
 export function normalizeElementNumber(key: keyof FlowElement, value: number): number {
   if (key === 'width') return Math.max(48, value);
   if (key === 'height') return Math.max(32, value);
