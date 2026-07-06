@@ -154,6 +154,7 @@ const pan = ref<{
 
 const isSpacePressed = ref(false);
 const connectionStartedAt = ref(0);
+const connectionStartPoint = ref<Point | null>(null);
 const canvasCursor = ref('default');
 const EXPORT_FONT = '14px Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
 const CONNECTION_CREATION_MOVE_THRESHOLD = 10;
@@ -294,6 +295,7 @@ function onPointerDown(event: PointerEvent) {
   if (anchor) {
     state.mode = 'creating-connection';
     connectionStartedAt.value = Date.now();
+    connectionStartPoint.value = point;
     state.pendingConnectionSource = { elementId: anchor.elementId, side: anchor.side };
     state.previewConnection = { source: anchor, pointer: point, target: null };
     state.selection = { type: 'element', id: anchor.elementId };
@@ -398,7 +400,7 @@ function onPointerMove(event: PointerEvent) {
 
   if (state.mode === 'creating-connection' && state.previewConnection) {
     const target = hitTestElementAnchorOrEdge(point, state.elements, state.pendingConnectionSource?.elementId, context);
-    state.previewConnection.pointer = target ? point : snapPreviewPoint(state.previewConnection.source, point);
+    state.previewConnection.pointer = target ? point : snapPreviewPoint(state.previewConnection.source, point, state.viewport.zoom);
     state.hoverAnchor = target ? { elementId: target.elementId, side: target.side } : null;
     state.previewConnection.target = target;
     state.hoverElementId = target?.elementId ?? null;
@@ -554,15 +556,15 @@ function onMouseDown(event: MouseEvent) {
 }
 
 function connectionPointerMovedEnough(point: Point): boolean {
-  const source = state.previewConnection?.source;
-  if (!source) return false;
-  return hasSignificantPointerMovement(source, point, state.viewport.zoom, CONNECTION_CREATION_MOVE_THRESHOLD);
+  const start = connectionStartPoint.value;
+  if (!start) return false;
+  return hasSignificantPointerMovement(start, point, state.viewport.zoom, CONNECTION_CREATION_MOVE_THRESHOLD);
 }
 
 function getPreviewCreationPoint(point: Point): Point {
   const source = state.previewConnection?.source;
   if (!source) return point;
-  return snapPreviewPoint(source, point);
+  return snapPreviewPoint(source, point, state.viewport.zoom);
 }
 
 function completeConnectionCreation(point: Point, context?: CanvasRenderingContext2D) {
@@ -732,6 +734,7 @@ function finishPointerInteraction(pointerId?: number, hoverPoint?: Point) {
   state.pendingConnectionSource = null;
   state.previewConnection = null;
   connectionStartedAt.value = 0;
+  connectionStartPoint.value = null;
   state.guides = [];
   clearHover();
   if (hoverPoint) refreshHover(hoverPoint);

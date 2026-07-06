@@ -212,7 +212,7 @@ export function createConnectionPath(sourceAnchor: Anchor, targetAnchor: Anchor)
 }
 
 export function createPreviewPath(sourceAnchor: Anchor, pointer: Point): ConnectionPath {
-  const side = inferTargetSide(sourceAnchor.side);
+  const side = inferPreviewTargetSide(sourceAnchor, pointer);
   const targetAnchor: Anchor = {
     elementId: '__preview__',
     side,
@@ -223,15 +223,16 @@ export function createPreviewPath(sourceAnchor: Anchor, pointer: Point): Connect
   return createConnectionPath(sourceAnchor, targetAnchor);
 }
 
-export function snapPreviewPoint(sourceAnchor: Anchor, pointer: Point): Point {
+export function snapPreviewPoint(sourceAnchor: Anchor, pointer: Point, zoom = 1): Point {
   const snapped = { ...pointer };
   const dx = pointer.x - sourceAnchor.x;
   const dy = pointer.y - sourceAnchor.y;
+  const snapDistance = PREVIEW_AXIS_SNAP_DISTANCE / Math.max(zoom, 0.01);
 
-  if (Math.abs(dy) <= PREVIEW_AXIS_SNAP_DISTANCE && Math.abs(dx) > Math.abs(dy)) {
+  if (Math.abs(dy) <= snapDistance && Math.abs(dx) > Math.abs(dy)) {
     snapped.y = sourceAnchor.y;
   }
-  if (Math.abs(dx) <= PREVIEW_AXIS_SNAP_DISTANCE && Math.abs(dy) > Math.abs(dx)) {
+  if (Math.abs(dx) <= snapDistance && Math.abs(dy) > Math.abs(dx)) {
     snapped.x = sourceAnchor.x;
   }
 
@@ -252,6 +253,15 @@ export function inferTargetSide(sourceSide: AnchorSide): AnchorSide {
   if (sourceSide === 'left') return 'right';
   if (sourceSide === 'top') return 'bottom';
   return 'top';
+}
+
+export function inferPreviewTargetSide(sourceAnchor: Anchor, pointer: Point): AnchorSide {
+  const dx = pointer.x - sourceAnchor.x;
+  const dy = pointer.y - sourceAnchor.y;
+
+  if (Math.abs(dx) > Math.abs(dy)) return dx >= 0 ? 'left' : 'right';
+  if (Math.abs(dy) > Math.abs(dx)) return dy >= 0 ? 'top' : 'bottom';
+  return inferTargetSide(sourceAnchor.side);
 }
 
 export function getArrowAngle(path: ConnectionPath, at: 'start' | 'end'): number {

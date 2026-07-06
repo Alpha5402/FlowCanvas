@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Connection, FlowElement } from '../types/flow';
 import {
   createConnectionPath,
+  createPreviewPath,
   distanceToConnection,
   getArrowAngle,
   getConnectionLabelBox,
@@ -10,6 +11,7 @@ import {
   getFlowBounds,
   getTextOffset,
   hasSignificantPointerMovement,
+  inferPreviewTargetSide,
   inferTargetSide,
   measureFitContent,
   pointInElement,
@@ -229,6 +231,16 @@ describe('geometry', () => {
     expect(result.guides.some((guide) => guide.orientation === 'vertical' && guide.position === 260)).toBe(true);
   });
 
+  it('keeps center alignment guides ahead of closer edge rules', () => {
+    const moving = { ...baseElement, id: 'moving', x: 0, y: 0 };
+    const target = { ...baseElement, id: 'target', x: 200, y: 160 };
+
+    const result = snapElement(moving, [moving, target], 194, 60, measurer);
+
+    expect(result.x).toBe(200);
+    expect(result.guides).toContainEqual(expect.objectContaining({ orientation: 'vertical', position: 260 }));
+  });
+
   it('snaps preview points to horizontal and vertical axes from the source anchor', () => {
     const source = getElementAnchors(baseElement, measurer).find((anchor) => anchor.side === 'right')!;
 
@@ -244,6 +256,28 @@ describe('geometry', () => {
       x: source.x + 160,
       y: source.y + 24,
     });
+  });
+
+  it('keeps preview axis snapping stable in screen pixels while zoomed', () => {
+    const source = getElementAnchors(baseElement, measurer).find((anchor) => anchor.side === 'right')!;
+
+    expect(snapPreviewPoint(source, { x: source.x + 160, y: source.y + 7 }, 2)).toEqual({
+      x: source.x + 160,
+      y: source.y + 7,
+    });
+    expect(snapPreviewPoint(source, { x: source.x + 160, y: source.y + 6 }, 2)).toEqual({
+      x: source.x + 160,
+      y: source.y,
+    });
+  });
+
+  it('infers preview target side from the dominant drag direction', () => {
+    const source = getElementAnchors(baseElement, measurer).find((anchor) => anchor.side === 'bottom')!;
+
+    expect(inferPreviewTargetSide(source, { x: source.x + 120, y: source.y + 24 })).toBe('left');
+    expect(inferPreviewTargetSide(source, { x: source.x - 120, y: source.y + 24 })).toBe('right');
+    expect(inferPreviewTargetSide(source, { x: source.x + 24, y: source.y + 120 })).toBe('top');
+    expect(createPreviewPath(source, { x: source.x + 120, y: source.y + 24 }).targetAnchor.side).toBe('left');
   });
 
   it('measures connection creation movement in screen pixels', () => {
