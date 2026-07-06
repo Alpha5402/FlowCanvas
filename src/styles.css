@@ -211,13 +211,20 @@ select {
   background: #ffffff;
 }
 
+select,
+input[type='color'] {
+  cursor: pointer;
+}
+
 input[type='color'] {
   padding: 4px;
 }
 
-input:disabled {
+input:disabled,
+select:disabled {
   color: #94a3b8;
   background: #f1f5f9;
+  cursor: not-allowed;
 }
 
 .field-row {
