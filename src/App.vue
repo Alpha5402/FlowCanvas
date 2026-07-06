@@ -30,6 +30,7 @@ import {
   isSelected,
   pushHistory,
   redo,
+  restoreElementPositions,
   toggleSelection,
   undo,
   type FlowSnapshot,
@@ -913,6 +914,9 @@ function onKeyDown(event: KeyboardEvent) {
     if (state.mode === 'resizing-element' && resize.value) {
       const element = state.elements.find((item) => item.id === resize.value?.id);
       if (element) Object.assign(element, cloneElement(resize.value.original));
+    }
+    if (state.mode === 'dragging-element' && drag.value) {
+      restoreElementPositions(state.elements, drag.value.originals);
     }
     if (state.mode === 'idle') {
       state.selection = null;

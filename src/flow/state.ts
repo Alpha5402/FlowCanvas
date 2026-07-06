@@ -102,6 +102,18 @@ export function createFixedResizeBase(
   return base;
 }
 
+export function restoreElementPositions(
+  elements: FlowElement[],
+  originals: Array<Pick<FlowElement, 'id' | 'x' | 'y'>>,
+) {
+  for (const original of originals) {
+    const element = elements.find((item) => item.id === original.id);
+    if (!element) continue;
+    element.x = original.x;
+    element.y = original.y;
+  }
+}
+
 export function pushHistory(history: HistoryState, snapshot: FlowSnapshot) {
   history.past.push(cloneSnapshot(snapshot));
   history.future = [];

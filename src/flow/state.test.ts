@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import type { Connection, FlowElement } from '../types/flow';
-import { applyElementSizeMode, cloneSnapshot, createFixedResizeBase, isSelected, toggleSelection } from './state';
+import {
+  applyElementSizeMode,
+  cloneSnapshot,
+  createFixedResizeBase,
+  isSelected,
+  restoreElementPositions,
+  toggleSelection,
+} from './state';
 
 const element: FlowElement = {
   id: 'element-a',
@@ -91,5 +98,24 @@ describe('state', () => {
 
     expect(base).toEqual(expect.objectContaining({ sizeMode: 'fixed', width: 148, height: 52 }));
     expect(original).toEqual(expect.objectContaining({ sizeMode: 'fit-content', width: 20, height: 20 }));
+  });
+
+  it('restores dragged element positions without touching unrelated elements', () => {
+    const elements = [
+      { ...element, id: 'a', x: 100, y: 110 },
+      { ...element, id: 'b', x: 200, y: 210 },
+      { ...element, id: 'c', x: 300, y: 310 },
+    ];
+
+    restoreElementPositions(elements, [
+      { id: 'a', x: 0, y: 10 },
+      { id: 'b', x: 20, y: 30 },
+    ]);
+
+    expect(elements.map(({ id, x, y }) => ({ id, x, y }))).toEqual([
+      { id: 'a', x: 0, y: 10 },
+      { id: 'b', x: 20, y: 30 },
+      { id: 'c', x: 300, y: 310 },
+    ]);
   });
 });
