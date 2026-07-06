@@ -511,6 +511,10 @@ function onPointerUp(event: PointerEvent) {
 }
 
 function onPointerCancel(event: PointerEvent) {
+  cancelActiveInteraction(event.pointerId);
+}
+
+function cancelActiveInteraction(pointerId?: number) {
   if (state.mode === 'resizing-element' && resize.value) {
     const element = state.elements.find((item) => item.id === resize.value?.id);
     if (element) Object.assign(element, cloneElement(resize.value.original));
@@ -523,7 +527,7 @@ function onPointerCancel(event: PointerEvent) {
     state.viewport.y = pan.value.startViewport.y;
     state.viewport.zoom = pan.value.startViewport.zoom;
   }
-  finishPointerInteraction(event.pointerId);
+  finishPointerInteraction(pointerId);
 }
 
 function onMouseUp(event: MouseEvent) {
@@ -952,22 +956,12 @@ function onKeyDown(event: KeyboardEvent) {
   if (event.key === 'Escape') {
     if (isEditingField && state.mode === 'idle') return;
     event.preventDefault();
-    if (state.mode === 'resizing-element' && resize.value) {
-      const element = state.elements.find((item) => item.id === resize.value?.id);
-      if (element) Object.assign(element, cloneElement(resize.value.original));
-    }
-    if (state.mode === 'dragging-element' && drag.value) {
-      restoreElementPositions(state.elements, drag.value.originals);
-    }
-    if (state.mode === 'panning-canvas' && pan.value) {
-      state.viewport.x = pan.value.startViewport.x;
-      state.viewport.y = pan.value.startViewport.y;
-      state.viewport.zoom = pan.value.startViewport.zoom;
-    }
     if (state.mode === 'idle') {
       state.selection = null;
+      finishPointerInteraction();
+    } else {
+      cancelActiveInteraction();
     }
-    finishPointerInteraction();
     return;
   }
 
@@ -1006,7 +1000,11 @@ function onKeyUp(event: KeyboardEvent) {
 
 function onWindowBlur() {
   isSpacePressed.value = false;
-  if (state.mode === 'idle') updateCursor('default');
+  if (state.mode === 'idle') {
+    updateCursor('default');
+    return;
+  }
+  cancelActiveInteraction();
 }
 
 function onCanvasDoubleClick() {
