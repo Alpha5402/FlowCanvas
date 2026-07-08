@@ -194,7 +194,8 @@ label {
 }
 
 input,
-select {
+select,
+textarea {
   width: 100%;
   min-height: 36px;
   border: 1px solid #cbd5e1;
@@ -202,6 +203,12 @@ select {
   padding: 7px 9px;
   color: #0f172a;
   background: #ffffff;
+}
+
+textarea {
+  min-height: 74px;
+  resize: vertical;
+  line-height: 1.45;
 }
 
 select,
@@ -214,7 +221,8 @@ input[type='color'] {
 }
 
 input:disabled,
-select:disabled {
+select:disabled,
+textarea:disabled {
   color: #94a3b8;
   background: #f1f5f9;
   cursor: not-allowed;

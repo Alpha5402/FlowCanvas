@@ -60,7 +60,7 @@ import type { Connection, ConnectionEnd, EditorState, FlowElement, Point, Resize
 
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 const stageRef = ref<HTMLElement | null>(null);
-const elementTextInputRef = ref<HTMLInputElement | null>(null);
+const elementTextInputRef = ref<HTMLTextAreaElement | null>(null);
 const documentFileInputRef = ref<HTMLInputElement | null>(null);
 
 const state = reactive<EditorState>({
@@ -1491,13 +1491,14 @@ onBeforeUnmount(() => {
           <legend>Element</legend>
           <label>
             Text
-            <input
+            <textarea
               ref="elementTextInputRef"
+              rows="3"
               :value="selectedElement.text"
               @focus="beginTextEdit('element', selectedElement.id)"
               @blur="endTextEdit"
-              @input="updateElementText(selectedElement, ($event.target as HTMLInputElement).value)"
-            />
+              @input="updateElementText(selectedElement, ($event.target as HTMLTextAreaElement).value)"
+            ></textarea>
           </label>
           <label>
             Shape
