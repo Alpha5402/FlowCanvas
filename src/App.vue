@@ -163,9 +163,11 @@ const endpointDrag = ref<{
 
 const pan = ref<{
   startPoint: Point;
+  creationPoint: Point | null;
   startViewport: { x: number; y: number; zoom: number };
   moved: boolean;
   preserveSelection: boolean;
+  createElementOnClick: boolean;
 } | null>(null);
 
 const isSpacePressed = ref(false);
@@ -283,6 +285,18 @@ function addElementAtViewportCenter() {
   });
 }
 
+function addElementAtWorldPoint(point: Point) {
+  recordHistory();
+  const next = createElement(point.x - 75, point.y - 36);
+  state.elements.push(next);
+  state.selection = { type: 'element', id: next.id };
+  state.mode = 'idle';
+  nextTick(() => {
+    draw();
+    focusElementText();
+  });
+}
+
 function selectAllFlowItems() {
   state.selection = selectAllItems(state.elements, state.connections);
   draw();
@@ -348,9 +362,11 @@ function onPointerDown(event: PointerEvent) {
     state.mode = 'panning-canvas';
     pan.value = {
       startPoint: screenPoint,
+      creationPoint: null,
       startViewport: { ...state.viewport },
       moved: false,
       preserveSelection: true,
+      createElementOnClick: false,
     };
     canvas.setPointerCapture(event.pointerId);
     updateCursor('grabbing');
@@ -461,9 +477,11 @@ function onPointerDown(event: PointerEvent) {
   state.mode = 'panning-canvas';
   pan.value = {
     startPoint: screenPoint,
+    creationPoint: point,
     startViewport: { ...state.viewport },
     moved: false,
     preserveSelection: multiSelect,
+    createElementOnClick: !multiSelect,
   };
   canvas.setPointerCapture(event.pointerId);
   clearHover();
@@ -650,7 +668,9 @@ function onPointerUp(event: PointerEvent) {
   }
 
   if (state.mode === 'panning-canvas' && pan.value) {
-    if (!pan.value.preserveSelection && !pan.value.moved) {
+    if (!pan.value.moved && pan.value.createElementOnClick && pan.value.creationPoint) {
+      addElementAtWorldPoint(pan.value.creationPoint);
+    } else if (!pan.value.preserveSelection && !pan.value.moved) {
       state.selection = null;
     }
     finishPointerInteraction(event.pointerId, point);
@@ -719,7 +739,9 @@ function onMouseUp(event: MouseEvent) {
   }
 
   if (state.mode === 'panning-canvas' && pan.value) {
-    if (!pan.value.preserveSelection && !pan.value.moved) {
+    if (!pan.value.moved && pan.value.createElementOnClick && pan.value.creationPoint) {
+      addElementAtWorldPoint(pan.value.creationPoint);
+    } else if (!pan.value.preserveSelection && !pan.value.moved) {
       state.selection = null;
     }
     finishPointerInteraction(undefined, point);
