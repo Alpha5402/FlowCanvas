@@ -59,6 +59,13 @@ export interface TextBox {
   height: number;
 }
 
+export interface TextLayout {
+  lines: string[];
+  width: number;
+  height: number;
+  lineHeight: number;
+}
+
 const FONT_SIZE = 14;
 const LINE_HEIGHT = 20;
 const SNAP_DISTANCE = 6;
@@ -86,10 +93,10 @@ export function getElementBox(element: FlowElement, measurer?: Measurer): Elemen
 }
 
 export function measureFitContent(element: FlowElement, measurer?: Measurer): Pick<ElementBox, 'width' | 'height'> {
-  const measured = measurer?.measureText(element.text).width ?? estimateTextWidth(element.text);
+  const layout = layoutElementText(element.text, undefined, measurer);
   const border = element.borderWidth * 2;
-  const width = Math.max(64, Math.ceil(measured + element.padding * 2 + border));
-  const height = Math.max(42, Math.ceil(LINE_HEIGHT + element.padding * 2 + border));
+  const width = Math.max(64, Math.ceil(layout.width + element.padding * 2 + border));
+  const height = Math.max(42, Math.ceil(layout.height + element.padding * 2 + border));
 
   if (element.shape === 'circle') {
     const side = Math.max(width, height);
@@ -97,6 +104,33 @@ export function measureFitContent(element: FlowElement, measurer?: Measurer): Pi
   }
 
   return { width, height };
+}
+
+export function layoutElementText(text: string, maxWidth?: number, measurer?: Measurer): TextLayout {
+  const paragraphs = text.split('\n');
+  const lines: string[] = [];
+  const constrainedWidth = maxWidth !== undefined ? Math.max(1, maxWidth) : undefined;
+
+  for (const paragraph of paragraphs) {
+    if (!paragraph) {
+      lines.push('');
+      continue;
+    }
+    if (constrainedWidth === undefined) {
+      lines.push(paragraph);
+      continue;
+    }
+    lines.push(...wrapParagraph(paragraph, constrainedWidth, measurer));
+  }
+
+  const normalizedLines = lines.length > 0 ? lines : [''];
+  const width = normalizedLines.reduce((maximum, line) => Math.max(maximum, measureTextWidth(line, measurer)), 0);
+  return {
+    lines: normalizedLines,
+    width,
+    height: normalizedLines.length * LINE_HEIGHT,
+    lineHeight: LINE_HEIGHT,
+  };
 }
 
 export function getCenter(element: FlowElement, measurer?: Measurer): Point {
@@ -621,6 +655,52 @@ function add(a: Point, b: Point): Point {
 
 function multiply(point: Point, value: number): Point {
   return { x: point.x * value, y: point.y * value };
+}
+
+function wrapParagraph(paragraph: string, maxWidth: number, measurer?: Measurer): string[] {
+  const tokens = paragraph.match(/\S+\s*/g) ?? [paragraph];
+  const lines: string[] = [];
+  let current = '';
+
+  for (const token of tokens) {
+    const candidate = `${current}${token}`;
+    if (measureTextWidth(candidate.trimEnd(), measurer) <= maxWidth) {
+      current = candidate;
+      continue;
+    }
+    if (current) lines.push(current.trimEnd());
+    current = '';
+    if (measureTextWidth(token.trimEnd(), measurer) <= maxWidth) {
+      current = token;
+      continue;
+    }
+    const pieces = wrapLongToken(token.trimEnd(), maxWidth, measurer);
+    lines.push(...pieces.slice(0, -1));
+    current = pieces[pieces.length - 1] ?? '';
+  }
+
+  if (current || lines.length === 0) lines.push(current.trimEnd());
+  return lines;
+}
+
+function wrapLongToken(token: string, maxWidth: number, measurer?: Measurer): string[] {
+  const lines: string[] = [];
+  let current = '';
+  for (const character of token) {
+    const candidate = `${current}${character}`;
+    if (!current || measureTextWidth(candidate, measurer) <= maxWidth) {
+      current = candidate;
+      continue;
+    }
+    lines.push(current);
+    current = character;
+  }
+  if (current) lines.push(current);
+  return lines;
+}
+
+function measureTextWidth(text: string, measurer?: Measurer): number {
+  return measurer?.measureText(text).width ?? estimateTextWidth(text);
 }
 
 function estimateTextWidth(text: string): number {

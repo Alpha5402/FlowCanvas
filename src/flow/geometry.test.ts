@@ -13,6 +13,7 @@ import {
   hasSignificantPointerMovement,
   inferPreviewTargetSide,
   inferTargetSide,
+  layoutElementText,
   measureFitContent,
   pointInElement,
   resizeElementBox,
@@ -72,6 +73,28 @@ describe('geometry', () => {
 
     expect(size.width).toBe(102);
     expect(size.height).toBe(50);
+  });
+
+  it('measures fit-content elements from manual multiline text', () => {
+    const size = measureFitContent(
+      {
+        ...baseElement,
+        sizeMode: 'fit-content',
+        text: 'One\nLonger line',
+        padding: 8,
+        borderWidth: 1,
+      },
+      measurer,
+    );
+
+    expect(size.width).toBe(106);
+    expect(size.height).toBe(58);
+  });
+
+  it('wraps element text to a fixed content width', () => {
+    expect(layoutElementText('Alpha Beta Gamma', 56, measurer).lines).toEqual(['Alpha', 'Beta', 'Gamma']);
+    expect(layoutElementText('One\nTwo', 120, measurer).lines).toEqual(['One', 'Two']);
+    expect(layoutElementText('abcdefgh', 24, measurer).lines).toEqual(['abc', 'def', 'gh']);
   });
 
   it('calculates four dynamic anchors with normal vectors', () => {

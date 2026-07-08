@@ -19,6 +19,7 @@ import {
   getElementAnchors,
   getElementBox,
   getResizeHandles,
+  layoutElementText,
   type ConnectionPath,
   type Measurer,
 } from './geometry';
@@ -150,17 +151,17 @@ function drawElement(context: CanvasRenderingContext2D, element: FlowElement, se
   context.fillStyle = '#111827';
   context.textBaseline = 'middle';
   context.textAlign = element.textAlign;
+  const maxTextWidth = getElementTextMaxWidth(element, box.width);
+  const textLayout = layoutElementText(element.text, maxTextWidth, measurer);
+  const firstLineY = box.y + box.height / 2 - textLayout.height / 2 + textLayout.lineHeight / 2;
   const textX =
     element.textAlign === 'left'
       ? box.x + element.padding
       : element.textAlign === 'right'
         ? box.x + box.width - element.padding
         : box.x + box.width / 2;
-  const maxTextWidth = getElementTextMaxWidth(element, box.width);
-  if (maxTextWidth === undefined) {
-    context.fillText(element.text, textX, box.y + box.height / 2);
-  } else {
-    context.fillText(element.text, textX, box.y + box.height / 2, maxTextWidth);
+  for (const [index, line] of textLayout.lines.entries()) {
+    context.fillText(line, textX, firstLineY + index * textLayout.lineHeight);
   }
 
   context.restore();

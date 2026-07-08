@@ -1448,28 +1448,30 @@ onBeforeUnmount(() => {
 
     <aside class="inspector" aria-label="Properties">
       <header class="inspector-header">
-        <h1>FlowCanvas</h1>
-        <label class="export-scale">
-          Export
-          <select v-model.number="exportPixelRatio">
-            <option :value="1">1x</option>
-            <option :value="2">2x</option>
-            <option :value="3">3x</option>
-            <option :value="4">4x</option>
-          </select>
-        </label>
+        <div class="inspector-title-row">
+          <h1>FlowCanvas</h1>
+          <label class="export-scale">
+            Export
+            <select v-model.number="exportPixelRatio">
+              <option :value="1">1x</option>
+              <option :value="2">2x</option>
+              <option :value="3">3x</option>
+              <option :value="4">4x</option>
+            </select>
+          </label>
+        </div>
         <div class="export-actions" aria-label="Image export" :aria-busy="exportBusy">
           <button class="tool-action" type="button" :disabled="exportBusy" @click="copyImage($event)">
-            Copy image
+            Copy
           </button>
           <button class="tool-action" type="button" :disabled="exportBusy" @click="downloadImage($event)">
-            Download image
+            Download
           </button>
-          <button class="tool-action" type="button" @click="saveFlowDocument($event)">
-            Save flow
+          <button class="tool-action secondary-action" type="button" @click="saveFlowDocument($event)">
+            Save
           </button>
-          <button class="tool-action" type="button" @click="openFlowDocument($event)">
-            Load flow
+          <button class="tool-action secondary-action" type="button" @click="openFlowDocument($event)">
+            Load
           </button>
         </div>
         <input
