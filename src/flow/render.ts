@@ -239,17 +239,11 @@ function drawPreviewConnection(
 
 function drawConnectionPath(context: CanvasRenderingContext2D, path: ConnectionPath) {
   context.beginPath();
-  context.moveTo(path.sourceAnchor.x, path.sourceAnchor.y);
-  context.lineTo(path.sourceLeadPoint.x, path.sourceLeadPoint.y);
-  context.bezierCurveTo(
-    path.control1.x,
-    path.control1.y,
-    path.control2.x,
-    path.control2.y,
-    path.targetLeadPoint.x,
-    path.targetLeadPoint.y,
-  );
-  context.lineTo(path.targetAnchor.x, path.targetAnchor.y);
+  const [firstPoint, ...points] = path.samplePoints;
+  context.moveTo(firstPoint.x, firstPoint.y);
+  for (const point of points) {
+    context.lineTo(point.x, point.y);
+  }
   context.stroke();
 }
 

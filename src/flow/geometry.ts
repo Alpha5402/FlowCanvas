@@ -71,6 +71,7 @@ const LINE_HEIGHT = 20;
 const SNAP_DISTANCE = 6;
 const PREVIEW_AXIS_SNAP_DISTANCE = 12;
 const LEAD_DISTANCE = 32;
+const ROUTE_PADDING = 24;
 export const MIN_ELEMENT_WIDTH = 48;
 export const MIN_ELEMENT_HEIGHT = 32;
 export const ANCHOR_HANDLE_OFFSET = 0;
@@ -219,7 +220,19 @@ export function getConnectionPath(
   const sourceAnchor = findAnchor(elements, normalized.source, measurer);
   const targetAnchor = findAnchor(elements, normalized.target, measurer);
   if (!sourceAnchor || !targetAnchor) return null;
-  return createConnectionPath(sourceAnchor, targetAnchor);
+  return createOrthogonalConnectionPath(sourceAnchor, targetAnchor, elements, measurer);
+}
+
+export function createOrthogonalConnectionPath(
+  sourceAnchor: Anchor,
+  targetAnchor: Anchor,
+  elements: FlowElement[] = [],
+  measurer?: Measurer,
+): ConnectionPath {
+  const sourceLeadPoint = add(sourceAnchor, multiply(sourceAnchor.normalVector, LEAD_DISTANCE));
+  const targetLeadPoint = add(targetAnchor, multiply(targetAnchor.normalVector, LEAD_DISTANCE));
+  const routePoints = buildOrthogonalRoute(sourceAnchor, sourceLeadPoint, targetLeadPoint, targetAnchor, elements, measurer);
+  return createPolylineConnectionPath(sourceAnchor, sourceLeadPoint, targetLeadPoint, targetAnchor, routePoints);
 }
 
 export function createConnectionPath(sourceAnchor: Anchor, targetAnchor: Anchor): ConnectionPath {
@@ -243,6 +256,64 @@ export function createConnectionPath(sourceAnchor: Anchor, targetAnchor: Anchor)
     textAngle: Math.atan2(tangent.y, tangent.x),
     samplePoints: sampleConnectionPath(sourceAnchor, sourceLeadPoint, control1, control2, targetLeadPoint, targetAnchor),
   };
+}
+
+function createPolylineConnectionPath(
+  sourceAnchor: Anchor,
+  sourceLeadPoint: Point,
+  targetLeadPoint: Point,
+  targetAnchor: Anchor,
+  routePoints: Point[],
+): ConnectionPath {
+  const samplePoints = dedupeAdjacentPoints([sourceAnchor, ...routePoints, targetAnchor]);
+  const middleIndex = Math.floor((samplePoints.length - 1) / 2);
+  const labelPoint = midpoint(samplePoints[middleIndex], samplePoints[middleIndex + 1] ?? samplePoints[middleIndex]);
+  const tangentStart = samplePoints[middleIndex];
+  const tangentEnd = samplePoints[middleIndex + 1] ?? samplePoints[middleIndex];
+
+  return {
+    sourceAnchor,
+    sourceLeadPoint,
+    targetLeadPoint,
+    targetAnchor,
+    control1: sourceLeadPoint,
+    control2: targetLeadPoint,
+    labelPoint,
+    textAngle: Math.atan2(tangentEnd.y - tangentStart.y, tangentEnd.x - tangentStart.x),
+    samplePoints,
+  };
+}
+
+function buildOrthogonalRoute(
+  sourceAnchor: Anchor,
+  sourceLeadPoint: Point,
+  targetLeadPoint: Point,
+  targetAnchor: Anchor,
+  elements: FlowElement[],
+  measurer?: Measurer,
+): Point[] {
+  const direct = [sourceLeadPoint, ...orthogonalMiddlePoints(sourceLeadPoint, targetLeadPoint), targetLeadPoint];
+  if (!routeCrossesObstacles(direct, sourceAnchor.elementId, targetAnchor.elementId, elements, measurer)) return direct;
+
+  const boxes = elements
+    .filter((element) => element.id !== sourceAnchor.elementId && element.id !== targetAnchor.elementId)
+    .map((element) => inflateBox(getElementBox(element, measurer), ROUTE_PADDING));
+  const minY = Math.min(sourceLeadPoint.y, targetLeadPoint.y, ...boxes.map((box) => box.y));
+  const maxY = Math.max(sourceLeadPoint.y, targetLeadPoint.y, ...boxes.map((box) => box.y + box.height));
+  const minX = Math.min(sourceLeadPoint.x, targetLeadPoint.x, ...boxes.map((box) => box.x));
+  const maxX = Math.max(sourceLeadPoint.x, targetLeadPoint.x, ...boxes.map((box) => box.x + box.width));
+  const candidates = [
+    [sourceLeadPoint, { x: sourceLeadPoint.x, y: minY - ROUTE_PADDING }, { x: targetLeadPoint.x, y: minY - ROUTE_PADDING }, targetLeadPoint],
+    [sourceLeadPoint, { x: sourceLeadPoint.x, y: maxY + ROUTE_PADDING }, { x: targetLeadPoint.x, y: maxY + ROUTE_PADDING }, targetLeadPoint],
+    [sourceLeadPoint, { x: minX - ROUTE_PADDING, y: sourceLeadPoint.y }, { x: minX - ROUTE_PADDING, y: targetLeadPoint.y }, targetLeadPoint],
+    [sourceLeadPoint, { x: maxX + ROUTE_PADDING, y: sourceLeadPoint.y }, { x: maxX + ROUTE_PADDING, y: targetLeadPoint.y }, targetLeadPoint],
+  ];
+
+  return (
+    candidates
+      .filter((candidate) => !routeCrossesObstacles(candidate, sourceAnchor.elementId, targetAnchor.elementId, elements, measurer))
+      .sort((a, b) => routeLength(a) - routeLength(b))[0] ?? direct
+  );
 }
 
 export function createPreviewPath(sourceAnchor: Anchor, pointer: Point): ConnectionPath {
@@ -705,4 +776,70 @@ function measureTextWidth(text: string, measurer?: Measurer): number {
 
 function estimateTextWidth(text: string): number {
   return Math.max(1, text.length) * FONT_SIZE * 0.58;
+}
+
+function orthogonalMiddlePoints(start: Point, end: Point): Point[] {
+  if (start.x === end.x || start.y === end.y) return [];
+  const midX = (start.x + end.x) / 2;
+  return [
+    { x: midX, y: start.y },
+    { x: midX, y: end.y },
+  ];
+}
+
+function routeCrossesObstacles(
+  routePoints: Point[],
+  sourceElementId: string,
+  targetElementId: string,
+  elements: FlowElement[],
+  measurer?: Measurer,
+): boolean {
+  const obstacles = elements
+    .filter((element) => element.id !== sourceElementId && element.id !== targetElementId)
+    .map((element) => inflateBox(getElementBox(element, measurer), 4));
+  for (let index = 1; index < routePoints.length; index += 1) {
+    if (obstacles.some((box) => segmentIntersectsBox(routePoints[index - 1], routePoints[index], box))) return true;
+  }
+  return false;
+}
+
+function inflateBox(box: ElementBox, padding: number): ElementBox {
+  return {
+    x: box.x - padding,
+    y: box.y - padding,
+    width: box.width + padding * 2,
+    height: box.height + padding * 2,
+  };
+}
+
+function segmentIntersectsBox(start: Point, end: Point, box: ElementBox): boolean {
+  if (start.x === end.x) {
+    const x = start.x;
+    const minY = Math.min(start.y, end.y);
+    const maxY = Math.max(start.y, end.y);
+    return x >= box.x && x <= box.x + box.width && maxY >= box.y && minY <= box.y + box.height;
+  }
+  if (start.y === end.y) {
+    const y = start.y;
+    const minX = Math.min(start.x, end.x);
+    const maxX = Math.max(start.x, end.x);
+    return y >= box.y && y <= box.y + box.height && maxX >= box.x && minX <= box.x + box.width;
+  }
+  return false;
+}
+
+function routeLength(points: Point[]): number {
+  let length = 0;
+  for (let index = 1; index < points.length; index += 1) {
+    length += distance(points[index - 1], points[index]);
+  }
+  return length;
+}
+
+function dedupeAdjacentPoints(points: Point[]): Point[] {
+  return points.filter((point, index) => index === 0 || point.x !== points[index - 1].x || point.y !== points[index - 1].y);
+}
+
+function midpoint(start: Point, end: Point): Point {
+  return { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 };
 }

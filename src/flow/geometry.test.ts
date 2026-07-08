@@ -163,7 +163,23 @@ describe('geometry', () => {
 
     expect(path?.sourceAnchor.side).toBe('right');
     expect(path?.targetAnchor.side).toBe('left');
-    expect(path?.samplePoints.length).toBeGreaterThan(10);
+    expect(path?.samplePoints[0]).toEqual(expect.objectContaining(path!.sourceAnchor));
+    expect(path?.samplePoints[path.samplePoints.length - 1]).toEqual(expect.objectContaining(path!.targetAnchor));
+    expect(path?.samplePoints.length).toBeGreaterThanOrEqual(4);
+  });
+
+  it('routes orthogonal connection paths around blocking elements', () => {
+    const elements = [
+      { ...baseElement, id: 'a', x: 0, y: 0 },
+      { ...baseElement, id: 'b', x: 320, y: 0 },
+      { ...baseElement, id: 'blocker', x: 160, y: -20, width: 80, height: 100 },
+    ];
+    const path = getConnectionPath(connection(), elements, measurer)!;
+
+    expect(path.samplePoints.some((point) => point.y < -44 || point.y > 124)).toBe(true);
+    expect(
+      path.samplePoints.some((point) => point.x > 160 && point.x < 240 && point.y > -20 && point.y < 80),
+    ).toBe(false);
   });
 
   it('calculates connection label boxes from text position and measured text', () => {
