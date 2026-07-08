@@ -183,6 +183,21 @@ describe('geometry', () => {
     ).toBe(false);
   });
 
+  it('uses a simple L-shaped orthogonal route when no obstacle blocks the path', () => {
+    const elements = [
+      { ...baseElement, id: 'a', x: 0, y: 220 },
+      { ...baseElement, id: 'b', x: 260, y: 0 },
+    ];
+    const path = getConnectionPath({ ...connection(), pathType: 'orthogonal' }, elements, measurer)!;
+
+    expect(path.samplePoints.length).toBeLessThanOrEqual(5);
+    expect(path.samplePoints.every((point, index, points) => {
+      if (index === 0) return true;
+      const previous = points[index - 1];
+      return point.x === previous.x || point.y === previous.y;
+    })).toBe(true);
+  });
+
   it('creates preview paths that match the selected connection path style', () => {
     const source = getElementAnchors(baseElement, measurer).find((anchor) => anchor.side === 'right')!;
     const curvePath = createPreviewPath(source, { x: source.x + 140, y: source.y + 60 }, 'curve');

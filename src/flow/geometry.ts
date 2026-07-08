@@ -293,8 +293,14 @@ function buildOrthogonalRoute(
   elements: FlowElement[],
   measurer?: Measurer,
 ): Point[] {
-  const direct = [sourceLeadPoint, ...orthogonalMiddlePoints(sourceLeadPoint, targetLeadPoint), targetLeadPoint];
-  if (!routeCrossesObstacles(direct, sourceAnchor.elementId, targetAnchor.elementId, elements, measurer)) return direct;
+  const direct = chooseOrthogonalRoute(
+    orthogonalRouteCandidates(sourceAnchor, sourceLeadPoint, targetLeadPoint, targetAnchor),
+    sourceAnchor.elementId,
+    targetAnchor.elementId,
+    elements,
+    measurer,
+  );
+  if (direct) return direct;
 
   const boxes = elements
     .filter((element) => element.id !== sourceAnchor.elementId && element.id !== targetAnchor.elementId)
@@ -310,11 +316,8 @@ function buildOrthogonalRoute(
     [sourceLeadPoint, { x: maxX + ROUTE_PADDING, y: sourceLeadPoint.y }, { x: maxX + ROUTE_PADDING, y: targetLeadPoint.y }, targetLeadPoint],
   ];
 
-  return (
-    candidates
-      .filter((candidate) => !routeCrossesObstacles(candidate, sourceAnchor.elementId, targetAnchor.elementId, elements, measurer))
-      .sort((a, b) => routeLength(a) - routeLength(b))[0] ?? direct
-  );
+  return chooseOrthogonalRoute(candidates, sourceAnchor.elementId, targetAnchor.elementId, elements, measurer)
+    ?? orthogonalRouteCandidates(sourceAnchor, sourceLeadPoint, targetLeadPoint, targetAnchor)[0];
 }
 
 export function createPreviewPath(
@@ -791,6 +794,62 @@ function orthogonalMiddlePoints(start: Point, end: Point): Point[] {
     { x: midX, y: start.y },
     { x: midX, y: end.y },
   ];
+}
+
+function orthogonalRouteCandidates(
+  sourceAnchor: Anchor,
+  sourceLeadPoint: Point,
+  targetLeadPoint: Point,
+  targetAnchor: Anchor,
+): Point[][] {
+  const candidates: Point[][] = [];
+  const sourceFirstCorner = sourceAnchor.side === 'left' || sourceAnchor.side === 'right'
+    ? { x: targetLeadPoint.x, y: sourceLeadPoint.y }
+    : { x: sourceLeadPoint.x, y: targetLeadPoint.y };
+  const targetFirstCorner = targetAnchor.side === 'left' || targetAnchor.side === 'right'
+    ? { x: sourceLeadPoint.x, y: targetLeadPoint.y }
+    : { x: targetLeadPoint.x, y: sourceLeadPoint.y };
+
+  candidates.push([sourceLeadPoint, sourceFirstCorner, targetLeadPoint]);
+  candidates.push([sourceLeadPoint, targetFirstCorner, targetLeadPoint]);
+  candidates.push([sourceLeadPoint, ...orthogonalMiddlePoints(sourceLeadPoint, targetLeadPoint), targetLeadPoint]);
+  const midY = (sourceLeadPoint.y + targetLeadPoint.y) / 2;
+  candidates.push([
+    sourceLeadPoint,
+    { x: sourceLeadPoint.x, y: midY },
+    { x: targetLeadPoint.x, y: midY },
+    targetLeadPoint,
+  ]);
+
+  const unique = new Map<string, Point[]>();
+  for (const candidate of candidates) {
+    const route = dedupeAdjacentPoints(candidate);
+    unique.set(route.map((point) => `${point.x},${point.y}`).join('|'), route);
+  }
+  return [...unique.values()];
+}
+
+function chooseOrthogonalRoute(
+  candidates: Point[][],
+  sourceElementId: string,
+  targetElementId: string,
+  elements: FlowElement[],
+  measurer?: Measurer,
+): Point[] | null {
+  return candidates
+    .filter((candidate) => !routeCrossesObstacles(candidate, sourceElementId, targetElementId, elements, measurer))
+    .sort((a, b) => routeBendCount(a) - routeBendCount(b) || routeLength(a) - routeLength(b))[0] ?? null;
+}
+
+function routeBendCount(points: Point[]): number {
+  let bends = 0;
+  let previousDirection: 'horizontal' | 'vertical' | null = null;
+  for (let index = 1; index < points.length; index += 1) {
+    const direction = points[index].x === points[index - 1].x ? 'vertical' : 'horizontal';
+    if (previousDirection && direction !== previousDirection) bends += 1;
+    previousDirection = direction;
+  }
+  return bends;
 }
 
 function routeCrossesObstacles(
