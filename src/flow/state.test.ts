@@ -6,6 +6,7 @@ import {
   canEditElementDimensions,
   clearHoverState,
   cloneSnapshot,
+  createFlowDocument,
   createFixedResizeBase,
   deleteSelectionFromFlow,
   getExportContent,
@@ -21,6 +22,7 @@ import {
   normalizeHexColorInput,
   normalizeConnectionNumber,
   normalizeElementNumber,
+  parseFlowDocument,
   resolvePreviewTarget,
   restoreElementPositions,
   selectAllItems,
@@ -112,6 +114,46 @@ describe('state', () => {
 
     expect(snapshot.connections[0].source.elementId).toBe('element-a');
     expect(snapshot.selection.items[0].id).toBe('element-a');
+  });
+
+  it('creates and parses FlowCanvas documents', () => {
+    const document = createFlowDocument(
+      {
+        elements: [element, { ...element, id: 'element-b' }],
+        connections: [connection],
+        selection: { type: 'connection', id: 'connection-a' },
+      },
+      { x: 12, y: 24, zoom: 1.5 },
+    );
+
+    expect(document.version).toBe(1);
+    expect(parseFlowDocument(document)).toEqual(document);
+    expect(parseFlowDocument({ ...document, version: 2 })).toBeNull();
+  });
+
+  it('clears invalid document selection while preserving valid content', () => {
+    const parsed = parseFlowDocument({
+      version: 1,
+      elements: [element],
+      connections: [],
+      selection: { type: 'element', id: 'missing' },
+      viewport: { x: 0, y: 0, zoom: 1 },
+    });
+
+    expect(parsed?.selection).toBeNull();
+    expect(parsed?.elements).toHaveLength(1);
+  });
+
+  it('rejects documents with invalid connection endpoints', () => {
+    expect(
+      parseFlowDocument({
+        version: 1,
+        elements: [element],
+        connections: [connection],
+        selection: null,
+        viewport: { x: 0, y: 0, zoom: 1 },
+      }),
+    ).toBeNull();
   });
 
   it('normalizes legacy connection endpoints when cloning snapshots', () => {

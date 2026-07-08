@@ -102,10 +102,26 @@ h2 {
   gap: 8px;
 }
 
+.export-scale {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 10px;
+}
+
 .export-status {
   color: #64748b;
   font-size: 12px;
   text-align: center;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
 
 .stage {

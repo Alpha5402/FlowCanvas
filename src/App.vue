@@ -28,6 +28,7 @@ import {
   cloneConnection,
   clearHoverState,
   cloneSelection,
+  createFlowDocument,
   createFixedResizeBase,
   deleteSelectionFromFlow,
   getExportContent,
@@ -43,6 +44,7 @@ import {
   normalizeHexColorInput,
   normalizeConnectionNumber,
   normalizeElementNumber,
+  parseFlowDocument,
   pushHistory,
   redo,
   restoreElementPositions,
@@ -59,6 +61,7 @@ import type { Connection, ConnectionEnd, EditorState, FlowElement, Point, Resize
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 const stageRef = ref<HTMLElement | null>(null);
 const elementTextInputRef = ref<HTMLInputElement | null>(null);
+const documentFileInputRef = ref<HTMLInputElement | null>(null);
 
 const state = reactive<EditorState>({
   elements: [
@@ -124,6 +127,7 @@ const canEditSelectedElementDimensions = computed(() => canEditElementDimensions
 const canEditSelectedConnectionDashPattern = computed(() => canEditConnectionDashPattern(selectedConnections.value));
 const exportStatus = ref('');
 const exportBusy = ref(false);
+const exportPixelRatio = ref(3);
 const textEdit = ref<{ type: 'element' | 'connection'; id: string; hasHistory: boolean } | null>(null);
 const fieldEdit = ref<{ type: 'element' | 'connection'; id: string; key: string; hasHistory: boolean } | null>(null);
 
@@ -169,7 +173,6 @@ const connectionStartedAt = ref(0);
 const connectionStartPoint = ref<Point | null>(null);
 const canvasCursor = ref('default');
 const EXPORT_FONT = '14px Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-const EXPORT_PIXEL_RATIO = 3;
 const SIGNIFICANT_CONNECTION_DRAG_DISTANCE = 10;
 
 function snapshot(): FlowSnapshot {
@@ -845,6 +848,53 @@ function resetView() {
   draw();
 }
 
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  try {
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.click();
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+function saveFlowDocument(event?: MouseEvent) {
+  releasePointerTriggeredControlFocus(event);
+  const document = createFlowDocument(snapshot(), state.viewport);
+  const blob = new Blob([JSON.stringify(document, null, 2)], { type: 'application/json' });
+  downloadBlob(blob, 'flowcanvas-board.flowcanvas.json');
+  exportStatus.value = 'Flow saved';
+}
+
+function openFlowDocument(event?: MouseEvent) {
+  releasePointerTriggeredControlFocus(event);
+  documentFileInputRef.value?.click();
+}
+
+async function loadFlowDocument(input: HTMLInputElement) {
+  const file = input.files?.[0];
+  input.value = '';
+  if (!file) return;
+  try {
+    const loaded = parseFlowDocument(JSON.parse(await file.text()));
+    if (!loaded) {
+      exportStatus.value = 'Could not load this FlowCanvas file';
+      return;
+    }
+    clearExportStatus();
+    history.past = [];
+    history.future = [];
+    applySnapshot({ elements: loaded.elements, connections: loaded.connections, selection: loaded.selection });
+    state.viewport = { ...loaded.viewport };
+    nextTick(draw);
+    exportStatus.value = 'Flow loaded';
+  } catch {
+    exportStatus.value = 'Could not load this FlowCanvas file';
+  }
+}
+
 function createExportCanvas() {
   const sourceCanvas = canvasRef.value;
   const sourceContext = sourceCanvas?.getContext('2d') ?? undefined;
@@ -858,7 +908,7 @@ function createExportCanvas() {
   const padding = 36;
   const width = Math.max(1, Math.ceil(bounds.maxX - bounds.minX + padding * 2));
   const height = Math.max(1, Math.ceil(bounds.maxY - bounds.minY + padding * 2));
-  const pixelRatio = Math.max(EXPORT_PIXEL_RATIO, window.devicePixelRatio || 1);
+  const pixelRatio = Math.max(exportPixelRatio.value, window.devicePixelRatio || 1);
   const exportCanvas = document.createElement('canvas');
   exportCanvas.width = Math.ceil(width * pixelRatio);
   exportCanvas.height = Math.ceil(height * pixelRatio);
@@ -921,15 +971,7 @@ async function downloadImage(event?: MouseEvent) {
       return;
     }
     const blob = await canvasToPngBlob(exportCanvas);
-    const url = URL.createObjectURL(blob);
-    try {
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = selectedCount.value > 0 ? 'flowcanvas-selection.png' : 'flowcanvas-board.png';
-      link.click();
-    } finally {
-      URL.revokeObjectURL(url);
-    }
+    downloadBlob(blob, selectedCount.value > 0 ? 'flowcanvas-selection.png' : 'flowcanvas-board.png');
     exportStatus.value = 'Image downloaded';
   } catch {
     exportStatus.value = 'Download failed';
@@ -1407,6 +1449,15 @@ onBeforeUnmount(() => {
     <aside class="inspector" aria-label="Properties">
       <header class="inspector-header">
         <h1>FlowCanvas</h1>
+        <label class="export-scale">
+          Export
+          <select v-model.number="exportPixelRatio">
+            <option :value="1">1x</option>
+            <option :value="2">2x</option>
+            <option :value="3">3x</option>
+            <option :value="4">4x</option>
+          </select>
+        </label>
         <div class="export-actions" aria-label="Image export" :aria-busy="exportBusy">
           <button class="tool-action" type="button" :disabled="exportBusy" @click="copyImage($event)">
             Copy image
@@ -1414,7 +1465,20 @@ onBeforeUnmount(() => {
           <button class="tool-action" type="button" :disabled="exportBusy" @click="downloadImage($event)">
             Download image
           </button>
+          <button class="tool-action" type="button" @click="saveFlowDocument($event)">
+            Save flow
+          </button>
+          <button class="tool-action" type="button" @click="openFlowDocument($event)">
+            Load flow
+          </button>
         </div>
+        <input
+          ref="documentFileInputRef"
+          class="visually-hidden"
+          type="file"
+          accept="application/json,.json,.flowcanvas"
+          @change="loadFlowDocument($event.target as HTMLInputElement)"
+        />
         <span v-if="exportStatus" class="export-status" role="status" aria-live="polite">{{ exportStatus }}</span>
       </header>
 

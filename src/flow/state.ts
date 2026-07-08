@@ -1,4 +1,4 @@
-import type { Anchor, Connection, ConnectionEndpoint, EditorState, FlowElement, Point, Selection } from '../types/flow';
+import type { Anchor, Connection, ConnectionEndpoint, EditorState, FlowElement, Point, Selection, ViewportState } from '../types/flow';
 
 export interface FlowSnapshot {
   elements: FlowElement[];
@@ -9,6 +9,14 @@ export interface FlowSnapshot {
 export interface HistoryState {
   past: FlowSnapshot[];
   future: FlowSnapshot[];
+}
+
+export interface FlowDocument {
+  version: 1;
+  elements: FlowElement[];
+  connections: Connection[];
+  selection: Selection;
+  viewport: ViewportState;
 }
 
 const PAN_MOVE_THRESHOLD = 3;
@@ -23,6 +31,35 @@ export function cloneSnapshot(snapshot: FlowSnapshot): FlowSnapshot {
     elements: snapshot.elements.map((element) => ({ ...element })),
     connections: snapshot.connections.map(cloneConnection),
     selection: cloneSelection(snapshot.selection),
+  };
+}
+
+export function createFlowDocument(snapshot: FlowSnapshot, viewport: ViewportState): FlowDocument {
+  return {
+    version: 1,
+    ...cloneSnapshot(snapshot),
+    viewport: { ...viewport },
+  };
+}
+
+export function parseFlowDocument(value: unknown): FlowDocument | null {
+  if (!isRecord(value) || value.version !== 1) return null;
+  if (!Array.isArray(value.elements) || !Array.isArray(value.connections) || !isViewportState(value.viewport)) return null;
+  const elements = value.elements.filter(isFlowElement).map((element) => ({ ...element }));
+  const elementIds = new Set(elements.map((element) => element.id));
+  const connections = value.connections
+    .filter(isConnection)
+    .map(cloneConnection)
+    .filter((connection) => elementIds.has(connection.source.elementId) && elementIds.has(connection.target.elementId));
+  if (elements.length !== value.elements.length || connections.length !== value.connections.length) return null;
+  const connectionIds = new Set(connections.map((connection) => connection.id));
+
+  return {
+    version: 1,
+    elements,
+    connections,
+    selection: normalizeDocumentSelection(value.selection, elementIds, connectionIds),
+    viewport: { ...value.viewport },
   };
 }
 
@@ -292,4 +329,89 @@ export function redo(history: HistoryState, current: FlowSnapshot): FlowSnapshot
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
+function isViewportState(value: unknown): value is ViewportState {
+  return (
+    isRecord(value) &&
+    isFiniteNumber(value.x) &&
+    isFiniteNumber(value.y) &&
+    isFiniteNumber(value.zoom)
+  );
+}
+
+function isConnectionEndpoint(value: unknown): value is ConnectionEndpoint {
+  return (
+    isRecord(value) &&
+    typeof value.elementId === 'string' &&
+    (value.side === 'top' || value.side === 'right' || value.side === 'bottom' || value.side === 'left')
+  );
+}
+
+function isFlowElement(value: unknown): value is FlowElement {
+  return (
+    isRecord(value) &&
+    typeof value.id === 'string' &&
+    isFiniteNumber(value.x) &&
+    isFiniteNumber(value.y) &&
+    isFiniteNumber(value.width) &&
+    isFiniteNumber(value.height) &&
+    (value.sizeMode === 'fixed' || value.sizeMode === 'fit-content') &&
+    (value.shape === 'rect' || value.shape === 'rounded-rect' || value.shape === 'ellipse' || value.shape === 'circle') &&
+    typeof value.text === 'string' &&
+    isFiniteNumber(value.padding) &&
+    (value.textAlign === 'left' || value.textAlign === 'center' || value.textAlign === 'right') &&
+    isFiniteNumber(value.borderRadius) &&
+    typeof value.backgroundColor === 'string' &&
+    typeof value.borderColor === 'string' &&
+    isFiniteNumber(value.borderWidth)
+  );
+}
+
+function isConnection(value: unknown): value is Connection {
+  return (
+    isRecord(value) &&
+    typeof value.id === 'string' &&
+    isConnectionEndpoint(value.source) &&
+    isConnectionEndpoint(value.target) &&
+    (value.lineType === 'solid' || value.lineType === 'dashed') &&
+    isFiniteNumber(value.lineWidth) &&
+    isFiniteNumber(value.dashLength) &&
+    isFiniteNumber(value.dashGap) &&
+    (value.arrow === 'none' || value.arrow === 'start' || value.arrow === 'end' || value.arrow === 'both') &&
+    typeof value.text === 'string' &&
+    (value.textPosition === 'above' || value.textPosition === 'below' || value.textPosition === 'middle')
+  );
+}
+
+function normalizeDocumentSelection(
+  selection: unknown,
+  elementIds: Set<string>,
+  connectionIds: Set<string>,
+): Selection {
+  if (!isRecord(selection)) return null;
+  if (selection.type === 'element' && typeof selection.id === 'string' && elementIds.has(selection.id)) {
+    return { type: 'element', id: selection.id };
+  }
+  if (selection.type === 'connection' && typeof selection.id === 'string' && connectionIds.has(selection.id)) {
+    return { type: 'connection', id: selection.id };
+  }
+  if (selection.type !== 'multi' || !Array.isArray(selection.items)) return null;
+  const items = selection.items.filter((item): item is { type: 'element' | 'connection'; id: string } => {
+    if (!isRecord(item) || typeof item.id !== 'string') return false;
+    if (item.type === 'element') return elementIds.has(item.id);
+    if (item.type === 'connection') return connectionIds.has(item.id);
+    return false;
+  });
+  if (items.length === 0) return null;
+  if (items.length === 1) return { ...items[0] };
+  return { type: 'multi', items: items.map((item) => ({ ...item })) };
 }
