@@ -25,6 +25,7 @@ describe('defaults', () => {
       expect.objectContaining({
         source: { elementId: 'source', side: 'bottom' },
         target: { elementId: 'target', side: 'left' },
+        pathType: 'curve',
         lineWidth: 1,
         text: '',
       }),

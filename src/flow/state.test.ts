@@ -51,6 +51,7 @@ const connection: Connection = {
   id: 'connection-a',
   source: { elementId: 'element-a', side: 'right' },
   target: { elementId: 'element-b', side: 'left' },
+  pathType: 'curve',
   lineType: 'solid',
   lineWidth: 1,
   dashLength: 10,
@@ -144,6 +145,20 @@ describe('state', () => {
     expect(parsed?.elements).toHaveLength(1);
   });
 
+  it('defaults missing connection path styles when parsing older documents', () => {
+    const legacyConnection = { ...connection };
+    delete (legacyConnection as Partial<Connection>).pathType;
+    const parsed = parseFlowDocument({
+      version: 1,
+      elements: [element, { ...element, id: 'element-b' }],
+      connections: [legacyConnection],
+      selection: null,
+      viewport: { x: 0, y: 0, zoom: 1 },
+    });
+
+    expect(parsed?.connections[0].pathType).toBe('curve');
+  });
+
   it('rejects documents with invalid connection endpoints', () => {
     expect(
       parseFlowDocument({
@@ -168,6 +183,7 @@ describe('state', () => {
 
     expect(cloned.connections[0].source).toEqual({ elementId: 'legacy-a', side: 'right' });
     expect(cloned.connections[0].target).toEqual({ elementId: 'legacy-b', side: 'left' });
+    expect(cloned.connections[0].pathType).toBe('curve');
     expect(getConnectionEndpoint(legacy, 'source')).toEqual({ elementId: 'legacy-a', side: 'right' });
   });
 

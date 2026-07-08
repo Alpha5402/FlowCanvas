@@ -220,6 +220,7 @@ export function getConnectionPath(
   const sourceAnchor = findAnchor(elements, normalized.source, measurer);
   const targetAnchor = findAnchor(elements, normalized.target, measurer);
   if (!sourceAnchor || !targetAnchor) return null;
+  if ((connection.pathType ?? 'curve') === 'curve') return createConnectionPath(sourceAnchor, targetAnchor);
   return createOrthogonalConnectionPath(sourceAnchor, targetAnchor, elements, measurer);
 }
 
@@ -316,7 +317,11 @@ function buildOrthogonalRoute(
   );
 }
 
-export function createPreviewPath(sourceAnchor: Anchor, pointer: Point): ConnectionPath {
+export function createPreviewPath(
+  sourceAnchor: Anchor,
+  pointer: Point,
+  pathType: Connection['pathType'] = 'curve',
+): ConnectionPath {
   const side = inferPreviewTargetSide(sourceAnchor, pointer);
   const targetAnchor: Anchor = {
     elementId: '__preview__',
@@ -325,6 +330,7 @@ export function createPreviewPath(sourceAnchor: Anchor, pointer: Point): Connect
     y: pointer.y,
     normalVector: getAnchorNormal(side),
   };
+  if (pathType === 'orthogonal') return createOrthogonalConnectionPath(sourceAnchor, targetAnchor);
   return createConnectionPath(sourceAnchor, targetAnchor);
 }
 
@@ -622,12 +628,12 @@ export function getConnectionLabelBox(
   const offset = getTextOffset(connection.textPosition, path.textAngle);
   const textX = path.labelPoint.x + offset.x;
   const textY = path.labelPoint.y + offset.y;
-  const metrics = measurer.measureText(connection.text);
+  const layout = layoutElementText(connection.text, undefined, measurer);
   return {
-    x: textX - metrics.width / 2 - 8,
-    y: textY - 10,
-    width: metrics.width + 16,
-    height: 20,
+    x: textX - layout.width / 2 - 8,
+    y: textY - layout.height / 2,
+    width: layout.width + 16,
+    height: layout.height,
   };
 }
 

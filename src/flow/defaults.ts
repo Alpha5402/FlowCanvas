@@ -34,6 +34,7 @@ export function createConnection(
     id: `connection-${connectionCounter++}`,
     source: { elementId: sourceElementId, side: sourceSide },
     target: { elementId: targetElementId, side: targetSide },
+    pathType: 'curve',
     lineType: 'solid',
     lineWidth: 1,
     dashLength: 10,

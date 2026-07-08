@@ -11,6 +11,7 @@ import type {
 import { isSelected, shouldHideElementControls } from './state';
 import {
   createConnectionPath,
+  createOrthogonalConnectionPath,
   createPreviewPath,
   getAnchorHandlePoint,
   getArrowAngle,
@@ -31,7 +32,13 @@ export interface RenderOptions {
   hoverConnectionId: string | null;
   hoverAnchor: ConnectionEndpoint | null;
   hoverResizeHandle: ResizeHandle | null;
-  previewConnection: { source: Anchor; pointer: { x: number; y: number }; target: Anchor | null; hiddenConnectionId?: string } | null;
+  previewConnection: {
+    source: Anchor;
+    pointer: { x: number; y: number };
+    target: Anchor | null;
+    pathType?: Connection['pathType'];
+    hiddenConnectionId?: string;
+  } | null;
   showGrid?: boolean;
   pixelRatio?: number;
 }
@@ -65,7 +72,13 @@ export function renderFlow(
   });
 
   if (options.previewConnection) {
-    drawPreviewConnection(context, options.previewConnection.source, options.previewConnection.pointer, options.previewConnection.target);
+    drawPreviewConnection(
+      context,
+      options.previewConnection.source,
+      options.previewConnection.pointer,
+      options.previewConnection.target,
+      options.previewConnection.pathType ?? 'curve',
+    );
   }
 
   elements.forEach((element) => {
@@ -224,8 +237,13 @@ function drawPreviewConnection(
   source: Anchor,
   pointer: { x: number; y: number },
   target: Anchor | null,
+  pathType: Connection['pathType'] = 'curve',
 ) {
-  const path = target ? createConnectionPath(source, target) : createPreviewPath(source, pointer);
+  const path = target
+    ? pathType === 'orthogonal'
+      ? createOrthogonalConnectionPath(source, target)
+      : createConnectionPath(source, target)
+    : createPreviewPath(source, pointer, pathType);
   context.save();
   context.strokeStyle = '#aab2c0';
   context.fillStyle = '#aab2c0';
@@ -261,7 +279,8 @@ function drawConnectionText(context: CanvasRenderingContext2D, connection: Conne
   const labelBox = getConnectionLabelBox(connection, path, context);
   if (!labelBox) return;
   const textX = labelBox.x + labelBox.width / 2;
-  const textY = labelBox.y + labelBox.height / 2;
+  const textLayout = layoutElementText(connection.text, undefined, context);
+  const firstLineY = labelBox.y + labelBox.height / 2 - textLayout.height / 2 + textLayout.lineHeight / 2;
 
   context.textAlign = 'center';
   context.textBaseline = 'middle';
@@ -270,7 +289,9 @@ function drawConnectionText(context: CanvasRenderingContext2D, connection: Conne
     context.fillRect(labelBox.x, labelBox.y, labelBox.width, labelBox.height);
   }
   context.fillStyle = '#1f2937';
-  context.fillText(connection.text, textX, textY);
+  for (const [index, line] of textLayout.lines.entries()) {
+    context.fillText(line, textX, firstLineY + index * textLayout.lineHeight);
+  }
 }
 
 function drawAnchorHandles(

@@ -401,7 +401,7 @@ function onPointerDown(event: PointerEvent) {
     connectionStartedAt.value = Date.now();
     connectionStartPoint.value = point;
     state.pendingConnectionSource = { elementId: anchor.elementId, side: anchor.side };
-    state.previewConnection = { source: anchor, pointer: point, target: null };
+    state.previewConnection = { source: anchor, pointer: point, target: null, pathType: 'curve' };
     state.selection = { type: 'element', id: anchor.elementId };
     canvas.setPointerCapture(event.pointerId);
     updateCursor('pointer');
@@ -542,6 +542,7 @@ function onPointerMove(event: PointerEvent) {
         source: otherAnchor,
         pointer: point,
         target: null,
+        pathType: original.pathType,
         hiddenConnectionId: endpointDrag.value.connectionId,
       };
       endpointDrag.value.active = true;
@@ -1656,12 +1657,13 @@ onBeforeUnmount(() => {
           <legend>Connection</legend>
           <label>
             Text
-            <input
+            <textarea
+              rows="3"
               :value="selectedConnection.text"
               @focus="beginTextEdit('connection', selectedConnection.id)"
               @blur="endTextEdit"
-              @input="updateConnectionText(selectedConnection, ($event.target as HTMLInputElement).value)"
-            />
+              @input="updateConnectionText(selectedConnection, ($event.target as HTMLTextAreaElement).value)"
+            ></textarea>
           </label>
           <label>
             Line type
@@ -1671,6 +1673,16 @@ onBeforeUnmount(() => {
             >
               <option value="solid">Solid</option>
               <option value="dashed">Dashed</option>
+            </select>
+          </label>
+          <label>
+            Path style
+            <select
+              :value="selectedConnection.pathType"
+              @change="updateConnection(selectedConnection, 'pathType', ($event.target as HTMLSelectElement).value as Connection['pathType'])"
+            >
+              <option value="curve">Curve</option>
+              <option value="orthogonal">Orthogonal</option>
             </select>
           </label>
           <label>
@@ -1889,6 +1901,17 @@ onBeforeUnmount(() => {
               <option value="" disabled></option>
               <option value="solid">Solid</option>
               <option value="dashed">Dashed</option>
+            </select>
+          </label>
+          <label>
+            Path style
+            <select
+              :value="batchConnectionValue('pathType')"
+              @change="updateSelectedConnectionChoice('pathType', $event.target as HTMLSelectElement)"
+            >
+              <option value="" disabled></option>
+              <option value="curve">Curve</option>
+              <option value="orthogonal">Orthogonal</option>
             </select>
           </label>
           <label>

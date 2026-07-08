@@ -2,6 +2,7 @@ export type ElementShape = 'rect' | 'rounded-rect' | 'ellipse' | 'circle';
 export type SizeMode = 'fixed' | 'fit-content';
 export type TextAlign = 'left' | 'center' | 'right';
 export type LineType = 'solid' | 'dashed';
+export type ConnectionPathType = 'curve' | 'orthogonal';
 export type ArrowType = 'none' | 'start' | 'end' | 'both';
 export type ConnectionTextPosition = 'above' | 'below' | 'middle';
 export type AnchorSide = 'top' | 'right' | 'bottom' | 'left';
@@ -60,6 +61,7 @@ export interface Connection {
   target: ConnectionEndpoint;
   sourceElementId?: string;
   targetElementId?: string;
+  pathType: ConnectionPathType;
   lineType: LineType;
   lineWidth: number;
   dashLength: number;
@@ -99,6 +101,7 @@ export interface EditorState {
     source: Anchor;
     pointer: Point;
     target: Anchor | null;
+    pathType?: ConnectionPathType;
     hiddenConnectionId?: string;
   } | null;
   hoverElementId: string | null;

@@ -30,6 +30,7 @@ const connection: Connection = {
   id: 'c',
   source: { elementId: 'a', side: 'right' },
   target: { elementId: 'b', side: 'left' },
+  pathType: 'curve',
   lineType: 'solid',
   lineWidth: 1,
   dashLength: 8,

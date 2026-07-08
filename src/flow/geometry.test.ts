@@ -48,6 +48,7 @@ function connection(): Connection {
     id: 'c',
     source: { elementId: 'a', side: 'right' },
     target: { elementId: 'b', side: 'left' },
+    pathType: 'curve',
     lineType: 'solid',
     lineWidth: 1,
     dashLength: 8,
@@ -153,7 +154,7 @@ describe('geometry', () => {
     expect(path.samplePoints[path.samplePoints.length - 1]).toEqual(expect.objectContaining({ x: target.x, y: target.y }));
   });
 
-  it('builds connection paths from source and target endpoints', () => {
+  it('builds curve connection paths from source and target endpoints by default', () => {
     const elements = [
       { ...baseElement, id: 'a', x: 0, y: 0 },
       { ...baseElement, id: 'b', x: 260, y: 160 },
@@ -165,7 +166,7 @@ describe('geometry', () => {
     expect(path?.targetAnchor.side).toBe('left');
     expect(path?.samplePoints[0]).toEqual(expect.objectContaining(path!.sourceAnchor));
     expect(path?.samplePoints[path.samplePoints.length - 1]).toEqual(expect.objectContaining(path!.targetAnchor));
-    expect(path?.samplePoints.length).toBeGreaterThanOrEqual(4);
+    expect(path?.samplePoints.length).toBeGreaterThan(20);
   });
 
   it('routes orthogonal connection paths around blocking elements', () => {
@@ -174,12 +175,26 @@ describe('geometry', () => {
       { ...baseElement, id: 'b', x: 320, y: 0 },
       { ...baseElement, id: 'blocker', x: 160, y: -20, width: 80, height: 100 },
     ];
-    const path = getConnectionPath(connection(), elements, measurer)!;
+    const path = getConnectionPath({ ...connection(), pathType: 'orthogonal' }, elements, measurer)!;
 
     expect(path.samplePoints.some((point) => point.y < -44 || point.y > 124)).toBe(true);
     expect(
       path.samplePoints.some((point) => point.x > 160 && point.x < 240 && point.y > -20 && point.y < 80),
     ).toBe(false);
+  });
+
+  it('creates preview paths that match the selected connection path style', () => {
+    const source = getElementAnchors(baseElement, measurer).find((anchor) => anchor.side === 'right')!;
+    const curvePath = createPreviewPath(source, { x: source.x + 140, y: source.y + 60 }, 'curve');
+    const orthogonalPath = createPreviewPath(source, { x: source.x + 140, y: source.y + 60 }, 'orthogonal');
+
+    expect(curvePath.samplePoints.length).toBeGreaterThan(20);
+    expect(orthogonalPath.samplePoints.length).toBeLessThan(curvePath.samplePoints.length);
+    expect(orthogonalPath.samplePoints.every((point, index, points) => {
+      if (index === 0) return true;
+      const previous = points[index - 1];
+      return point.x === previous.x || point.y === previous.y;
+    })).toBe(true);
   });
 
   it('calculates connection label boxes from text position and measured text', () => {
@@ -196,6 +211,21 @@ describe('geometry', () => {
     expect(labelBox.height).toBe(20);
     expect(labelBox.x + labelBox.width / 2).toBeCloseTo(path.labelPoint.x + offset.x);
     expect(labelBox.y + labelBox.height / 2).toBeCloseTo(path.labelPoint.y + offset.y);
+  });
+
+  it('calculates connection label boxes from multiline text', () => {
+    const elements = [
+      { ...baseElement, id: 'a', x: 0, y: 0 },
+      { ...baseElement, id: 'b', x: 260, y: 160 },
+    ];
+    const labeledConnection = { ...connection(), text: 'Go\nBacklog', textPosition: 'middle' as const };
+    const path = getConnectionPath(labeledConnection, elements, measurer)!;
+    const labelBox = getConnectionLabelBox(labeledConnection, path, measurer)!;
+
+    expect(labelBox.width).toBe(72);
+    expect(labelBox.height).toBe(40);
+    expect(labelBox.x + labelBox.width / 2).toBeCloseTo(path.labelPoint.x);
+    expect(labelBox.y + labelBox.height / 2).toBeCloseTo(path.labelPoint.y);
   });
 
   it('calculates flow bounds from the provided export content', () => {

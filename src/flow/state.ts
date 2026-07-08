@@ -148,9 +148,14 @@ export function getSelectionItems(selection: Selection): Array<{ type: 'element'
 export function cloneConnection(connection: Connection): Connection {
   return {
     ...connection,
+    pathType: normalizeConnectionPathType(connection.pathType),
     source: { ...getConnectionEndpoint(connection, 'source') },
     target: { ...getConnectionEndpoint(connection, 'target') },
   };
+}
+
+export function normalizeConnectionPathType(value: unknown): Connection['pathType'] {
+  return value === 'orthogonal' ? 'orthogonal' : 'curve';
 }
 
 export function cloneSelection(selection: Selection): Selection {
@@ -382,6 +387,7 @@ function isConnection(value: unknown): value is Connection {
     typeof value.id === 'string' &&
     isConnectionEndpoint(value.source) &&
     isConnectionEndpoint(value.target) &&
+    (value.pathType === undefined || value.pathType === 'curve' || value.pathType === 'orthogonal') &&
     (value.lineType === 'solid' || value.lineType === 'dashed') &&
     isFiniteNumber(value.lineWidth) &&
     isFiniteNumber(value.dashLength) &&
